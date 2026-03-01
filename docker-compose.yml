@@ -1,0 +1,60 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ai_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ai_workbench
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/scripts/migrate.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+    healthcheck:
+      test: [
+        "CMD-SHELL",
+        "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD}"
+      ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+    container_name: ai_backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ai_workbench
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 2h
+      BCRYPT_SALT_ROUNDS: 10
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY}
+      QQ_MAIL_USER: ${QQ_MAIL_USER}
+      QQ_MAIL_AUTH_CODE: ${QQ_MAIL_AUTH_CODE}
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        REACT_APP_API_BASE_URL: /api
+    container_name: ai_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  mysql_data:
