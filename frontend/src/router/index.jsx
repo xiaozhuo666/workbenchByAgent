@@ -25,8 +25,9 @@ function AppRouter() {
     return <Spin style={{ marginTop: 120, width: "100%" }} />;
   }
 
+  const basename = process.env.PUBLIC_URL || "";
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <Routes>
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/login" element={<Navigate to="/auth?mode=login" replace />} />

@@ -48,7 +48,7 @@ services:
     build:
       context: ./frontend
       args:
-        REACT_APP_API_BASE_URL: /api
+        PUBLIC_PATH: /ai_project/workbenchByAgent
     container_name: ai_frontend
     restart: unless-stopped
     depends_on:
