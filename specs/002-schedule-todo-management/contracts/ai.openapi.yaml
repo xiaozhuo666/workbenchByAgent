@@ -1,0 +1,33 @@
+openapi: 3.0.0
+info:
+  title: AI Assistant API
+  version: 1.0.0
+paths:
+  /ai/generate-todos:
+    post:
+      summary: Generate todo drafts from natural language
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: {type: string}
+      responses:
+        '200':
+          description: List of suggested todos
+  /ai/execute-command:
+    post:
+      summary: Batch execute commands (e.g. mark multiple as completed)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: {type: string}
+      responses:
+        '200':
+          description: Preview of actions to be taken

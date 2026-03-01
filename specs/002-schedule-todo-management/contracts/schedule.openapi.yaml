@@ -1,0 +1,32 @@
+openapi: 3.0.0
+info:
+  title: Schedule API
+  version: 1.0.0
+paths:
+  /schedules:
+    get:
+      summary: List schedules for current user by date
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          description: A list of schedules
+    post:
+      summary: Create a new schedule
+      responses:
+        '201':
+          description: Created
+  /schedules/{id}:
+    patch:
+      summary: Update schedule
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: Delete schedule
+      responses:
+        '204':
+          description: Deleted
