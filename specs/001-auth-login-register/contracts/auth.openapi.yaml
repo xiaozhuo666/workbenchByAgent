@@ -1,0 +1,196 @@
+openapi: 3.0.3
+info:
+  title: Auth API Contract
+  version: 1.0.0
+  description: Login/Register MVP API contract
+servers:
+  - url: http://localhost:4000/api
+paths:
+  /auth/register:
+    post:
+      summary: Register account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '409':
+          description: Username exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/login:
+    post:
+      summary: Login with account and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/logout:
+    post:
+      summary: Logout current session
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          description: Token missing/invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/me:
+    get:
+      summary: Get current user for login restore
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          description: Token missing/expired/invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 32
+          pattern: '^[a-zA-Z0-9_]+$'
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+    LoginRequest:
+      type: object
+      required: [account, password]
+      properties:
+        account:
+          type: string
+          description: username or email
+        password:
+          type: string
+    AuthSuccessResponse:
+      type: object
+      required: [code, message, data]
+      properties:
+        code:
+          type: string
+          example: OK
+        message:
+          type: string
+          example: success
+        data:
+          type: object
+          required: [token, user]
+          properties:
+            token:
+              type: string
+            user:
+              $ref: '#/components/schemas/UserPublic'
+    MeResponse:
+      type: object
+      required: [code, message, data]
+      properties:
+        code:
+          type: string
+          example: OK
+        message:
+          type: string
+          example: success
+        data:
+          $ref: '#/components/schemas/UserPublic'
+    UserPublic:
+      type: object
+      required: [id, username]
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        email:
+          type: string
+          nullable: true
+    BaseResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: OK
+        message:
+          type: string
+          example: success
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - AUTH_INVALID_CREDENTIALS
+            - AUTH_USERNAME_EXISTS
+            - AUTH_PASSWORD_WEAK
+            - AUTH_TOKEN_MISSING
+            - AUTH_TOKEN_EXPIRED
+            - AUTH_TOKEN_INVALID
+            - AUTH_SESSION_INVALID
+            - SYS_INTERNAL_ERROR
+        message:
+          type: string
+        requestId:
+          type: string
