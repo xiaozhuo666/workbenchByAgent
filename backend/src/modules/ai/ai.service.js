@@ -1,39 +1,46 @@
 const OpenAI = require("openai");
+const dayjs = require("dayjs");
 
 const openai = new OpenAI({
   apiKey: process.env.DASHSCOPE_API_KEY,
   baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
 });
 
-async function generateTodos(text) {
+async function generateTasks(text) {
   const response = await openai.chat.completions.create({
     model: "qwen-plus",
     messages: [
       {
         role: "system",
-        content: `你是一个专业的任务管理助手。请将用户输入的自然语言转化为待办事项列表。
+        content: `你是一个专业的任务管理助手。请将用户输入的自然语言转化为待办事项或日程。
         要求：
-        1. 仅返回 JSON 数组格式，不要包含任何解释或 Markdown 代码块标识。
-        2. 数组中的每个对象应包含: "title" (必填, 标题), "description" (选填, 详细描述)。
-        3. 如果用户没有明确的任务，返回空数组 []。
-        
-        示例输入："帮我安排明天下午两点开会，三点写文档"
-        示例输出：[{"title": "下午两点开会", "description": ""}, {"title": "三点写文档", "description": ""}]`
+        1. 仅返回 JSON 对象，包含一个 "tasks" 数组。
+        2. 每个任务对象包含: 
+           - "type": "todo" 或 "schedule"
+           - "title": 标题
+           - "description": 描述 (可选)
+           - "startTime": 对于 schedule 是必填的 (格式: YYYY-MM-DD HH:mm:ss)
+           - "endTime": 对于 schedule 是可选的 (格式: YYYY-MM-DD HH:mm:ss)
+        3. 如果没有明确的时间，默认为 "todo"。如果有具体时间点或时间段，设为 "schedule"。
+        4. 当前时间是: ${dayjs().format("YYYY-MM-DD HH:mm:ss")} (星期${['日','一','二','三','四','五','六'][dayjs().day()]})。
+        5. 请特别注意：
+           - 如果用户提到“明天”、“下周”等相对时间，请根据当前时间计算出正确的绝对日期。
+           - 如果用户只提到了时间点（如“10点”），且该时间在今天已过去，请默认设为“明天”。
+           - 如果用户说“周五”，请根据当前日期找到接下来的那个周五的日期。
+        6. 不要包含任何解释或 Markdown 代码块标识。`
       },
       { role: "user", content: text }
-    ],
-    response_format: { type: "json_object" } // DashScope might not support this exactly but qwen-plus handles JSON prompt well
+    ]
   });
 
   const content = response.choices[0].message.content;
   try {
-    // Sometimes models return Markdown even if asked not to
     const jsonStr = content.replace(/```json|```/g, "").trim();
     const data = JSON.parse(jsonStr);
-    return Array.isArray(data) ? data : (data.todos || []);
+    return data.tasks || [];
   } catch (error) {
     console.error("AI Parsing Error:", error, content);
-    throw new Error("AI 助手解析指令失败，请重试");
+    throw new Error("AI 助手解析任务失败");
   }
 }
 
@@ -69,7 +76,40 @@ async function executeBatchCommand(text, todos) {
   }
 }
 
+async function chat(text, conversationHistory = []) {
+  const messages = [
+    {
+      role: "system",
+      content: `你是一个友好、聪慧的AI助手。用户可以与你进行自由对话。
+      
+      你的功能包括：
+      1. 回答各种问题（知识、建议、创意等）
+      2. 帮助制定计划和决策
+      3. 提供工作和生活相关的建议
+      4. 进行头脑风暴和创意讨论
+      
+      注意：
+      - 保持对话自然流畅，友好且专业
+      - 如果用户想创建任务或日程，可以建议他们使用任务创建功能
+      - 回答要简洁明了，避免过长
+      - 使用中文回答`
+    },
+    ...conversationHistory,
+    { role: "user", content: text }
+  ];
+
+  const response = await openai.chat.completions.create({
+    model: "qwen-plus",
+    messages: messages,
+    temperature: 0.7,
+    max_tokens: 1000
+  });
+
+  return response.choices[0].message.content;
+}
+
 module.exports = {
-  generateTodos,
+  generateTasks,
   executeBatchCommand,
+  chat,
 };

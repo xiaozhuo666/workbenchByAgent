@@ -20,8 +20,8 @@ const { Title, Text } = Typography;
 
 const HomePage = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const [showAISidebar, setShowAISidebar] = useState(false);
-  const [activeTab, setActiveTab] = useState("sessions");
+  const [showAISidebar, setShowAISidebar] = useState(true);
+  const [activeTab, setActiveTab] = useState("todos");
   const [refreshKey, setRefreshKey] = useState(0);
   const user = getUser();
   const navigate = useNavigate();

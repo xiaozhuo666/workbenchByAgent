@@ -3,14 +3,16 @@ import { Input, Button, List, Card, Badge, Typography, Space, message, Spin, Emp
 import { SendOutlined, RobotOutlined, UserOutlined, PlusOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import aiStore from "../../services/aiStore";
 import { createTodo, getTodos, batchUpdateTodoStatus } from "../../api/todoApi";
+import { createSchedule } from "../../api/scheduleApi";
 import AIConfirmationModal from "../AIConfirmationModal";
+import dayjs from "dayjs";
 
 const { Text } = Typography;
 
 const AISidebar = ({ onDraftSaved }) => {
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState([
-    { role: "assistant", content: "你好！我是你的 AI 助手，你可以告诉我你想做什么，我会帮你整理成待办事项。此外我也支持批量操作，比如“完成刚才的所有任务”。" }
+    { role: "assistant", content: "你好！我是你的 AI 助手。我可以帮你创建任务、批量操作、或者自由对话。有什么需要吗？" }
   ]);
   const [loading, setLoading] = useState(false);
   const [confirmationModal, setConfirmationModal] = useState({ open: false, summary: "", updates: [], todos: [] });
@@ -27,14 +29,13 @@ const AISidebar = ({ onDraftSaved }) => {
     
     const userMsg = { role: "user", content: inputValue };
     const currentInputValue = inputValue;
-    setMessages([...messages, userMsg]);
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     setInputValue("");
     setLoading(true);
 
     try {
-      // Determine if it's a command or generation
-      // We can try generation first, if it returns empty we try command
-      // Or we can fetch current todos and let AI decide
+      // Try to execute command (batch update)
       const currentTodos = await getTodos();
       const result = await aiStore.executeCommand(currentInputValue, currentTodos);
       
@@ -49,15 +50,26 @@ const AISidebar = ({ onDraftSaved }) => {
         return;
       }
 
-      // If no updates found, try generating new todos
-      const drafts = await aiStore.generateTodos(currentInputValue);
-      const assistantMsg = { 
-        role: "assistant", 
-        content: drafts.length > 0 ? "我已为你解析出以下任务，是否保存到待办列表？" : "我没能识别出具体任务，请试着更清晰地描述。",
-        drafts: drafts 
-      };
-      setMessages(prev => [...prev, assistantMsg]);
+      // Try to generate new tasks
+      const drafts = await aiStore.generateTasks(currentInputValue);
+      if (drafts.length > 0) {
+        const assistantMsg = { 
+          role: "assistant", 
+          content: `我已为你解析出 ${drafts.length} 个任务，是否保存？`,
+          drafts: drafts 
+        };
+        setMessages(prev => [...prev, assistantMsg]);
+      } else {
+        // Fall back to free chat
+        const reply = await aiStore.chat(currentInputValue, updatedMessages.slice(0, -1));
+        const assistantMsg = { 
+          role: "assistant", 
+          content: reply
+        };
+        setMessages(prev => [...prev, assistantMsg]);
+      }
     } catch (error) {
+      console.error("AI Error:", error);
       message.error(error.message || "AI 助手开小差了");
       setMessages(prev => [...prev, { role: "assistant", content: "抱歉，执行指令时出错了，请稍后再试。" }]);
     } finally {
@@ -87,8 +99,22 @@ const AISidebar = ({ onDraftSaved }) => {
   const handleSaveDrafts = async (drafts, index) => {
     try {
       setLoading(true);
-      await Promise.all(drafts.map(d => createTodo(d)));
-      message.success("任务已保存到待办列表");
+      await Promise.all(drafts.map(d => {
+        if (d.type === "schedule") {
+          return createSchedule({
+            title: d.title,
+            description: d.description,
+            startTime: d.startTime,
+            endTime: d.endTime
+          });
+        } else {
+          return createTodo({
+            title: d.title,
+            description: d.description
+          });
+        }
+      }));
+      message.success("任务已保存");
       
       // Update message to show saved status
       const newMessages = [...messages];
@@ -97,6 +123,7 @@ const AISidebar = ({ onDraftSaved }) => {
       
       if (onDraftSaved) onDraftSaved();
     } catch (error) {
+      console.error("Save Error:", error);
       message.error("保存失败");
     } finally {
       setLoading(false);
@@ -136,7 +163,17 @@ const AISidebar = ({ onDraftSaved }) => {
                       dataSource={msg.drafts}
                       renderItem={item => (
                         <List.Item style={{ padding: "4px 0", border: "none" }}>
-                          <Text style={{ fontSize: 13 }}>• {item.title}</Text>
+                          <Space direction="vertical" size={0}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <Badge status={item.type === "schedule" ? "processing" : "default"} />
+                              <Text style={{ fontSize: 13, fontWeight: 500 }}>{item.title}</Text>
+                            </div>
+                            {item.startTime && (
+                              <Text type="secondary" style={{ fontSize: 11, marginLeft: 12 }}>
+                                {dayjs(item.startTime).format("MM-DD HH:mm")}
+                              </Text>
+                            )}
+                          </Space>
                         </List.Item>
                       )}
                     />
@@ -150,7 +187,7 @@ const AISidebar = ({ onDraftSaved }) => {
                         onClick={() => handleSaveDrafts(msg.drafts, index)}
                         disabled={loading}
                       >
-                        保存到待办
+                        全部保存
                       </Button>
                     ) : (
                       <div style={{ textAlign: "center", color: "#52c41a", marginTop: 8, fontSize: 13 }}>

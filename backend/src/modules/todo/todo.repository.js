@@ -3,9 +3,9 @@ const pool = require("../../db");
 async function create(userId, title, description) {
   const [result] = await pool.execute(
     "INSERT INTO todos (user_id, title, description) VALUES (?, ?, ?)",
-    [userId, title, description || null]
+    [userId || null, title || null, description || null]
   );
-  return { id: result.insertId, userId, title, description, status: "pending" };
+  return { id: result.insertId, user_id: userId, title, description, status: "pending" };
 }
 
 async function findByUserId(userId) {

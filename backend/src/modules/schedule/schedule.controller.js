@@ -2,7 +2,9 @@ const service = require("./schedule.service");
 
 async function list(req, res, next) {
   try {
+    console.log("Fetching schedules for user:", req.auth.id, "Query:", req.query);
     const schedules = await service.getUserSchedules(req.auth.id, req.query);
+    console.log("Found schedules count:", schedules.length);
     res.json({ code: "OK", data: schedules });
   } catch (error) {
     next(error);

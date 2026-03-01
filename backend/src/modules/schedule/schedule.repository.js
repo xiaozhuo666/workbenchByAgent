@@ -3,12 +3,13 @@ const pool = require("../../db");
 async function create(userId, title, description, startTime, endTime) {
   const [result] = await pool.execute(
     "INSERT INTO schedules (user_id, title, description, start_time, end_time) VALUES (?, ?, ?, ?, ?)",
-    [userId, title, description || null, startTime, endTime || null]
+    [userId || null, title || null, description || null, startTime || null, endTime || null]
   );
-  return { id: result.insertId, userId, title, description, startTime, endTime };
+  return { id: result.insertId, user_id: userId, title, description, start_time: startTime, end_time: endTime };
 }
 
 async function findByUserId(userId, startTime, endTime) {
+  console.log("Finding schedules for:", { userId, startTime, endTime });
   let query = "SELECT * FROM schedules WHERE user_id = ?";
   const params = [userId || null];
   if (startTime) {
@@ -21,6 +22,9 @@ async function findByUserId(userId, startTime, endTime) {
   }
   query += " ORDER BY start_time ASC";
   const [rows] = await pool.execute(query, params);
+  console.log("Executing SQL:", query);
+  console.log("With params:", params);
+  console.log("Database returned rows:", rows.length);
   return rows;
 }
 

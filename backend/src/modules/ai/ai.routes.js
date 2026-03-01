@@ -6,7 +6,8 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
-router.post("/generate-todos", controller.generateTodos);
+router.post("/generate-tasks", controller.generateTasks);
 router.post("/execute-command", controller.executeCommand);
+router.post("/chat", controller.chat);
 
 module.exports = router;
