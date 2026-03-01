@@ -10,7 +10,12 @@ const aiRoutes = require("./modules/ai/ai.routes");
 
 const app = express();
 
-app.use(cors({ origin: env.corsOrigin }));
+app.use(cors({ 
+  origin: env.corsOrigin,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(express.json());
 app.use(requestContext);
 

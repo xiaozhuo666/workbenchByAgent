@@ -4,6 +4,11 @@ const authMiddleware = require("../../middleware/auth");
 
 const router = express.Router();
 
+// Handle CORS preflight requests
+router.options("*", (req, res) => {
+  res.sendStatus(200);
+});
+
 router.use(authMiddleware);
 
 router.post("/generate-tasks", controller.generateTasks);
