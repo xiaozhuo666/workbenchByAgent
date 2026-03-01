@@ -31,7 +31,7 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Gates are filled from `.specify/memory/constitution.md`: list each principle name and any MUST/SHOULD rules; verify this feature's technical choices comply (backend Node.js, frontend React + Less + antd, charts ECharts, database MySQL).
 
 ## Project Structure
 
