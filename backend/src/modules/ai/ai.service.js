@@ -56,11 +56,12 @@ async function executeBatchCommand(text, todos) {
         
         要求：
         1. 仅返回 JSON 对象，包含: 
-           - "updates": 数组，每个对象包含 "id" (任务 ID) 和 "status" ('pending' 或 'completed')。
+           - "updates": 数组，每个对象包含 "id" (任务 ID) 和 "status" ('pending', 'completed' 或 'delete')。
            - "summary": 字符串，简述你准备执行的操作。
         2. 仅识别用户明确要求更改的任务。
-        3. 如果用户指令不是为了更新现有状态（例如是想新建任务），则返回 {"updates": [], "summary": "不是更新指令"}。
-        4. 不要包含任何解释或 Markdown 代码块标识。`
+        3. 如果用户提及“删除”、“移除”、“去掉”某些任务，请将 status 设为 'delete'。
+        4. 如果用户指令不是为了更新或删除现有状态（例如是想新建任务），则返回 {"updates": [], "summary": "不是操作指令"}。
+        5. 不要包含任何解释或 Markdown 代码块标识。`
       },
       { role: "user", content: text }
     ]

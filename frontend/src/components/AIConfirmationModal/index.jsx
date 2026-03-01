@@ -1,11 +1,23 @@
 import React from "react";
 import { Modal, List, Typography } from "antd";
-import { CheckCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;
 
 const AIConfirmationModal = ({ open, onCancel, onConfirm, summary, updates, todos }) => {
   const getTodoTitle = (id) => todos.find(t => t.id === id)?.title || "未知任务";
+
+  const getStatusIcon = (status) => {
+    if (status === "delete") return <DeleteOutlined style={{ color: "#ff4d4f" }} />;
+    if (status === "completed") return <CheckCircleOutlined style={{ color: "#52c41a" }} />;
+    return <ClockCircleOutlined style={{ color: "#faad14" }} />;
+  };
+
+  const getStatusText = (status) => {
+    if (status === "delete") return "删除任务";
+    if (status === "completed") return "标记完成";
+    return "恢复待办";
+  };
 
   return (
     <Modal
@@ -31,14 +43,10 @@ const AIConfirmationModal = ({ open, onCancel, onConfirm, summary, updates, todo
         renderItem={item => (
           <List.Item>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {item.status === "completed" ? (
-                <CheckCircleOutlined style={{ color: "#52c41a" }} />
-              ) : (
-                <ClockCircleOutlined style={{ color: "#faad14" }} />
-              )}
+              {getStatusIcon(item.status)}
               <Text>{getTodoTitle(item.id)}</Text>
               <Text type="secondary" style={{ fontSize: 12 }}>
-                → {item.status === "completed" ? "标记完成" : "恢复待办"}
+                → {getStatusText(item.status)}
               </Text>
             </div>
           </List.Item>

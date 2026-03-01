@@ -113,7 +113,22 @@
 
 ---
 
-## Phase 6: Polish & Cross-Cutting Concerns
+## Phase 6: User Story 4 - AI 自由对话与持久化 (Priority: P2)
+
+**Goal**: 支持 AI 自由对话并实现历史记录的数据库持久化。
+
+### Implementation for User Story 4
+
+- [X] T035 [US4] Add `ai_conversations` table in `backend/scripts/migrate.sql`
+- [X] T036 [US4] Implement conversation history CRUD in `backend/src/modules/ai/ai.repository.js`
+- [X] T037 [US4] Update AI controller to support free chat fallback and history saving in `backend/src/modules/ai/ai.controller.js`
+- [X] T038 [US4] Add conversation management API endpoints in `backend/src/modules/ai/ai.routes.js`
+- [X] T039 [US4] Update `aiStore` to support conversation ID and history loading in `frontend/src/services/aiStore.js`
+- [X] T040 [US4] Enhance `AISidebar` with conversation ID tracking and "Clear" functionality in `frontend/src/components/AISidebar/index.jsx`
+
+---
+
+## Phase 7: Polish & Cross-Cutting Concerns
 
 **Purpose**: Improvements that affect multiple user stories
 
@@ -144,20 +159,6 @@
 - Phase 1 & 2 tasks marked [P] can run in parallel
 - Once Phase 2 is complete, US1 can be developed while the AI logic (US2/US3) is prototyped in the backend
 - All tests marked [P] can run in parallel
-
----
-
-## Parallel Example: User Story 1
-
-```bash
-# Backend Implementation
-Task: "Implement Todo repository and service in backend/src/modules/todo/"
-Task: "Implement Schedule repository and service in backend/src/modules/schedule/"
-
-# Frontend UI
-Task: "Build TodoList component with antd in frontend/src/components/TodoList/index.jsx"
-Task: "Build ScheduleList with Mini-Calendar view in frontend/src/components/ScheduleList/index.jsx"
-```
 
 ---
 

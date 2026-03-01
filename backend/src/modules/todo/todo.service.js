@@ -25,11 +25,15 @@ async function deleteTodo(id, userId) {
 
 async function batchUpdateStatus(userId, updates) {
   // updates is an array of {id, status}
-  // We should verify each todo belongs to the user
+  // status can be 'pending', 'completed', or 'delete'
   for (const update of updates) {
     const todo = await repository.findByIdAndUserId(update.id, userId);
     if (todo) {
-      await repository.updateStatus(update.id, userId, update.status);
+      if (update.status === 'delete') {
+        await repository.remove(update.id, userId);
+      } else {
+        await repository.updateStatus(update.id, userId, update.status);
+      }
     }
   }
   return true;

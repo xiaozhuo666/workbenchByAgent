@@ -2,7 +2,7 @@
 
 **Feature Branch**: `002-schedule-todo-management`  
 **Created**: 2026-03-01  
-**Status**: Draft  
+**Status**: Approved (Development Completed)  
 **Input**: User description: "请为「智能工作台助手」创建第二个功能规格：实现登录后首页的"日程与待办管理 + AI 辅助待办"能力。范围包含：首页概览展示、待办基础能力、日程基础能力、AI 生成待办草稿、AI 指令完成待办。系统约束包含：React/Less/antd 前端、Node/Express 后端、MySQL 数据库、OpenAI SDK (DashScope qwen-plus) 调用。"
 
 ## Clarifications

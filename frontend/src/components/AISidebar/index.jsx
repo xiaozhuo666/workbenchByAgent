@@ -201,6 +201,30 @@ const AISidebar = ({ onDraftSaved }) => {
                         type="link" 
                         size="small" 
                         style={{ padding: 0, height: "auto", textAlign: "left", fontSize: 13 }}
+                        onClick={() => handleExampleClick("添加3个代办事项，分别是买牛奶，买衣服，买零食")}
+                      >
+                        “添加3个代办事项，分别是买牛奶，买衣服，买零食”
+                      </Button>
+                      <Button 
+                        type="link" 
+                        size="small" 
+                        style={{ padding: 0, height: "auto", textAlign: "left", fontSize: 13 }}
+                        onClick={() => handleExampleClick("确认第一个代办事项")}
+                      >
+                        “确认第一个代办事项”
+                      </Button>
+                      <Button 
+                        type="link" 
+                        size="small" 
+                        style={{ padding: 0, height: "auto", textAlign: "left", fontSize: 13 }}
+                        onClick={() => handleExampleClick("我已经买了零食了")}
+                      >
+                        “我已经买了零食了”
+                      </Button>
+                      <Button 
+                        type="link" 
+                        size="small" 
+                        style={{ padding: 0, height: "auto", textAlign: "left", fontSize: 13 }}
                         onClick={() => handleExampleClick("特朗普是谁")}
                       >
                         “特朗普是谁”

@@ -4,6 +4,9 @@ const { appError } = require("./errorHandler");
 const repository = require("../modules/auth/auth.repository");
 
 async function authMiddleware(req, res, next) {
+  if (req.method === "OPTIONS") {
+    return next();
+  }
   try {
     const authHeader = req.get("authorization") || "";
     if (!authHeader.startsWith("Bearer ")) {

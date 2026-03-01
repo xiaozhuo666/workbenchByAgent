@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS ai_command_logs (
   user_id BIGINT NOT NULL,
   raw_text TEXT NOT NULL,
   parsed_json JSON NULL,
-  command_type ENUM('generate_todo', 'batch_update', 'chat') NOT NULL,
+  command_type ENUM('generate_todo', 'batch_update', 'chat', 'generate_task') NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   KEY idx_ai_command_logs_user_id (user_id),
   CONSTRAINT fk_ai_command_logs_user FOREIGN KEY (user_id) REFERENCES users(id)

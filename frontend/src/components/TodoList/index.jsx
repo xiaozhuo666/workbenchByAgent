@@ -78,6 +78,7 @@ const TodoList = () => {
         <List
           locale={{ emptyText: <EmptyState description="暂无待办事项，快去添加一个吧" /> }}
           dataSource={todos}
+          rowKey="id"
           renderItem={(item) => (
             <List.Item
               actions={[
@@ -89,14 +90,23 @@ const TodoList = () => {
                 />
               ]}
             >
-              <Checkbox 
-                checked={item.status === "completed"} 
-                onChange={() => handleToggleStatus(item.id, item.status)}
-              >
-                <Text delete={item.status === "completed"} style={{ marginLeft: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+                <Checkbox 
+                  checked={item.status === "completed"} 
+                  onChange={() => handleToggleStatus(item.id, item.status)}
+                />
+                <Text 
+                  delete={item.status === "completed"} 
+                  style={{ 
+                    marginLeft: 12, 
+                    cursor: "pointer",
+                    color: item.status === "completed" ? "rgba(0,0,0,0.45)" : "inherit"
+                  }}
+                  onClick={() => handleToggleStatus(item.id, item.status)}
+                >
                   {item.title}
                 </Text>
-              </Checkbox>
+              </div>
             </List.Item>
           )}
         />

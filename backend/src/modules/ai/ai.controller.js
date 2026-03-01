@@ -9,7 +9,7 @@ async function generateTasks(req, res, next) {
     const tasks = await service.generateTasks(text);
     
     try {
-      await repository.logCommand(req.auth.id, text, tasks, "generate_task");
+      await repository.logCommand(req.auth.id, text, tasks, "generate_todo");
     } catch (logError) {
       console.error("AI Logging error:", logError);
     }
