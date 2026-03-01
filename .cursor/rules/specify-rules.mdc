@@ -1,0 +1,35 @@
+﻿---
+description: Project Development Guidelines
+globs: ["**/*"]
+alwaysApply: true
+---
+# ai_project Development Guidelines
+
+Auto-generated from all feature plans. Last updated: 2026-03-01
+
+## Active Technologies
+
+- JavaScript (Node.js 20 LTS), SQL (MySQL 8.x), TypeScript 可选（后续迭代） + Express, mysql2, bcrypt, jsonwebtoken, cors, dotenv, React, React Router, antd, less (001-auth-login-register)
+
+## Project Structure
+
+```text
+backend/
+frontend/
+tests/
+```
+
+## Commands
+
+npm test; npm run lint
+
+## Code Style
+
+JavaScript (Node.js 20 LTS), SQL (MySQL 8.x), TypeScript 可选（后续迭代）: Follow standard conventions
+
+## Recent Changes
+
+- 001-auth-login-register: Added JavaScript (Node.js 20 LTS), SQL (MySQL 8.x), TypeScript 可选（后续迭代） + Express, mysql2, bcrypt, jsonwebtoken, cors, dotenv, React, React Router, antd, less
+
+<!-- MANUAL ADDITIONS START -->
+<!-- MANUAL ADDITIONS END -->
