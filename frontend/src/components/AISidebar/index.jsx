@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Input, Button, List, Card, Badge, Typography, Space, message, Spin, Empty } from "antd";
-import { SendOutlined, RobotOutlined, UserOutlined, PlusOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import { SendOutlined, RobotOutlined, UserOutlined, PlusOutlined, CheckCircleOutlined, ExclamationCircleOutlined, DeleteOutlined } from "@ant-design/icons";
 import aiStore from "../../services/aiStore";
 import { createTodo, getTodos, batchUpdateTodoStatus } from "../../api/todoApi";
 import { createSchedule } from "../../api/scheduleApi";
@@ -16,6 +16,7 @@ const AISidebar = ({ onDraftSaved }) => {
   ]);
   const [loading, setLoading] = useState(false);
   const [confirmationModal, setConfirmationModal] = useState({ open: false, summary: "", updates: [], todos: [] });
+  const [conversationId, setConversationId] = useState(null);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -61,10 +62,15 @@ const AISidebar = ({ onDraftSaved }) => {
         setMessages(prev => [...prev, assistantMsg]);
       } else {
         // Fall back to free chat
-        const reply = await aiStore.chat(currentInputValue, updatedMessages.slice(0, -1));
+        const chatResult = await aiStore.chat(
+          currentInputValue, 
+          conversationId,
+          updatedMessages.slice(0, -1)
+        );
+        setConversationId(chatResult.conversationId);
         const assistantMsg = { 
           role: "assistant", 
-          content: reply
+          content: chatResult.reply
         };
         setMessages(prev => [...prev, assistantMsg]);
       }
@@ -116,7 +122,6 @@ const AISidebar = ({ onDraftSaved }) => {
       }));
       message.success("任务已保存");
       
-      // Update message to show saved status
       const newMessages = [...messages];
       newMessages[index].saved = true;
       setMessages(newMessages);
@@ -130,8 +135,27 @@ const AISidebar = ({ onDraftSaved }) => {
     }
   };
 
+  const handleClearChat = () => {
+    setMessages([
+      { role: "assistant", content: "你好！我是你的 AI 助手。我可以帮你创建任务、批量操作、或者自由对话。有什么需要吗？" }
+    ]);
+    setConversationId(null);
+    message.success("对话已清除");
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div style={{ padding: "8px 16px", borderBottom: "1px solid #f0f0f0", display: "flex", justifyContent: "flex-end" }}>
+        <Button 
+          type="text" 
+          size="small" 
+          icon={<DeleteOutlined />} 
+          onClick={handleClearChat}
+          title="清除当前对话"
+        >
+          清除
+        </Button>
+      </div>
       <div 
         ref={scrollRef}
         style={{ flex: 1, overflowY: "auto", padding: "16px", background: "#f9f9f9" }}

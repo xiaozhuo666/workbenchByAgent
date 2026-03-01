@@ -1,0 +1,35 @@
+feat: 实现AI对话历史的持久化存储
+
+数据库层：
+- 添加 ai_conversations 表用于存储对话历史
+- 更新 ai_command_logs 表支持 'chat' 命令类型
+- 包含用户ID、对话ID、角色、内容和时间戳字段
+
+后端服务：
+- 扩展 ai.repository 支持对话消息的CRUD操作
+  * saveMessage: 保存单条消息
+  * getConversationHistory: 获取指定对话历史（可分页）
+  * getConversations: 列出用户所有对话
+  * deleteConversation: 删除指定对话
+- 更新 ai.controller 的 chat 端点
+  * 自动生成或接收 conversationId
+  * 保存用户消息和AI回复
+  * 返回 conversationId 供前端使用
+- 新增三个 API 端点
+  * GET /ai/conversations: 列出对话列表
+  * GET /ai/conversations/:id: 获取对话历史
+  * DELETE /ai/conversations/:id: 删除对话
+
+前端服务：
+- 扩展 aiStore 支持持久化操作
+  * chat() 方法增加 conversationId 参数
+  * 新增 getConversationHistory() 方法
+  * 新增 listConversations() 方法
+  * 新增 deleteConversation() 方法
+
+前端组件：
+- AISidebar 添加 conversationId 状态管理
+- 每次自由对话自动获取或创建对话ID
+- 在侧边栏头部添加"清除"按钮
+  * 可清除当前对话记录
+  * 重置对话状态
