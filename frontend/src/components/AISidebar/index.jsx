@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Input, Button, List, Card, Badge, Typography, Space, message, Spin, Empty } from "antd";
-import { SendOutlined, RobotOutlined, UserOutlined, PlusOutlined, CheckCircleOutlined, ExclamationCircleOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Input, Button, List, Card, Badge, Typography, Space, message, Spin } from "antd";
+import { SendOutlined, RobotOutlined, UserOutlined, PlusOutlined, CheckCircleOutlined, DeleteOutlined } from "@ant-design/icons";
 import aiStore from "../../services/aiStore";
 import { createTodo, getTodos, batchUpdateTodoStatus } from "../../api/todoApi";
 import { createSchedule } from "../../api/scheduleApi";
@@ -25,20 +25,18 @@ const AISidebar = ({ onDraftSaved }) => {
     }
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!inputValue.trim()) return;
+  const processSend = async (text) => {
+    if (!text || !text.trim()) return;
     
-    const userMsg = { role: "user", content: inputValue };
-    const currentInputValue = inputValue;
+    const userMsg = { role: "user", content: text };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInputValue("");
     setLoading(true);
 
     try {
-      // Try to execute command (batch update)
       const currentTodos = await getTodos();
-      const result = await aiStore.executeCommand(currentInputValue, currentTodos);
+      const result = await aiStore.executeCommand(text, currentTodos);
       
       if (result.updates && result.updates.length > 0) {
         setConfirmationModal({
@@ -51,8 +49,7 @@ const AISidebar = ({ onDraftSaved }) => {
         return;
       }
 
-      // Try to generate new tasks
-      const drafts = await aiStore.generateTasks(currentInputValue);
+      const drafts = await aiStore.generateTasks(text);
       if (drafts.length > 0) {
         const assistantMsg = { 
           role: "assistant", 
@@ -61,9 +58,8 @@ const AISidebar = ({ onDraftSaved }) => {
         };
         setMessages(prev => [...prev, assistantMsg]);
       } else {
-        // Fall back to free chat
         const chatResult = await aiStore.chat(
-          currentInputValue, 
+          text, 
           conversationId,
           updatedMessages.slice(0, -1)
         );
@@ -81,6 +77,15 @@ const AISidebar = ({ onDraftSaved }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSend = () => {
+    processSend(inputValue);
+  };
+
+  const handleExampleClick = (text) => {
+    if (loading) return;
+    processSend(text);
   };
 
   const handleConfirmBatch = async () => {
@@ -178,7 +183,31 @@ const AISidebar = ({ onDraftSaved }) => {
                   boxShadow: "0 2px 6px rgba(0,0,0,0.05)"
                 }}
               >
-                {msg.content}
+                <div style={{ whiteSpace: "pre-wrap" }}>{msg.content}</div>
+                
+                {index === 0 && msg.role === "assistant" && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #f0f0f0" }}>
+                    <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>你可以试着这样说：</Text>
+                    <Space direction="vertical" size={4} style={{ width: "100%" }}>
+                      <Button 
+                        type="link" 
+                        size="small" 
+                        style={{ padding: 0, height: "auto", textAlign: "left", fontSize: 13 }}
+                        onClick={() => handleExampleClick("帮我安排明天上午的会议，提醒我明天下午买牛奶")}
+                      >
+                        “帮我安排明天上午的会议，提醒我明天下午买牛奶”
+                      </Button>
+                      <Button 
+                        type="link" 
+                        size="small" 
+                        style={{ padding: 0, height: "auto", textAlign: "left", fontSize: 13 }}
+                        onClick={() => handleExampleClick("特朗普是谁")}
+                      >
+                        “特朗普是谁”
+                      </Button>
+                    </Space>
+                  </div>
+                )}
                 
                 {msg.drafts && msg.drafts.length > 0 && (
                   <div style={{ marginTop: 12, borderTop: "1px solid #f0f0f0", paddingTop: 8 }}>

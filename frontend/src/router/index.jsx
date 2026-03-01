@@ -39,6 +39,7 @@ function AppRouter() {
             </ProtectedRoute>
           }
         />
+        <Route path="/guest" element={<HomePage isGuest={true} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

@@ -64,9 +64,12 @@ const ScheduleList = () => {
     fetchSchedules();
   }, [fetchSchedules]);
 
+  const monthYear = selectedDate.format("YYYY-MM");
+
   useEffect(() => {
-    fetchMonthSchedules(selectedDate);
-  }, [selectedDate.format("YYYY-MM"), fetchMonthSchedules]);
+    const date = dayjs(monthYear);
+    fetchMonthSchedules(date);
+  }, [monthYear, fetchMonthSchedules]);
 
   const handleCreate = async (values) => {
     try {

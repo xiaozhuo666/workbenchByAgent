@@ -4,9 +4,10 @@ import {
   MessageOutlined,
   UnorderedListOutlined,
   CalendarOutlined,
-  RocketOutlined,
+  RedditOutlined,
   UserOutlined,
   LogoutOutlined,
+  LoginOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { getUser, doLogout } from "../../services/authStore";
@@ -18,17 +19,21 @@ import "./index.css";
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
 
-const HomePage = () => {
+const HomePage = ({ isGuest }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [showAISidebar, setShowAISidebar] = useState(true);
-  const [activeTab, setActiveTab] = useState("todos");
+  const [activeTab, setActiveTab] = useState("sessions");
   const [refreshKey, setRefreshKey] = useState(0);
-  const user = getUser();
+  const user = isGuest ? { username: "访客" } : getUser();
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    doLogout();
-    navigate("/auth?mode=login");
+    if (isGuest) {
+      navigate("/auth?mode=login");
+    } else {
+      doLogout();
+      navigate("/auth?mode=login");
+    }
   };
 
   const menuItems = [
@@ -103,12 +108,12 @@ const HomePage = () => {
               </div>
             )}
             {!collapsed && (
-              <Tooltip title="退出登录">
-                <Button 
-                  type="text" 
-                  icon={<LogoutOutlined />} 
-                  onClick={handleLogout} 
-                  size="small" 
+              <Tooltip title={isGuest ? "登录" : "退出登录"}>
+                <Button
+                  type="text"
+                  icon={isGuest ? <LoginOutlined /> : <LogoutOutlined />}
+                  onClick={handleLogout}
+                  size="small"
                 />
               </Tooltip>
             )}
@@ -118,19 +123,20 @@ const HomePage = () => {
       <Layout>
         <Content className="main-content" style={{ position: "relative" }}>
           {renderContent()}
-          
+
           {/* AI Toggle Button */}
           <Tooltip title="AI 助手">
             <Button
               type="primary"
               shape="circle"
-              icon={<RocketOutlined />}
-              size="large"
+              icon={<RedditOutlined style={{ fontSize: 24 }} />}
               style={{
                 position: "fixed",
-                right: showAISidebar ? 374 : 24,
+                right: showAISidebar ? 444 : 24,
                 bottom: 24,
-                boxShadow: "0 4px 12px rgba(22, 119, 255, 0.4)",
+                width: 56,
+                height: 56,
+                boxShadow: "0 6px 16px rgba(22, 119, 255, 0.4)",
                 zIndex: 1000,
                 transition: "right 0.3s ease",
               }}
@@ -139,11 +145,11 @@ const HomePage = () => {
           </Tooltip>
         </Content>
       </Layout>
-      
+
       {/* AISidebar */}
       {showAISidebar && (
         <Sider
-          width={350}
+          width={420}
           theme="light"
           style={{
             borderLeft: "1px solid var(--border-color)",
@@ -161,7 +167,7 @@ const HomePage = () => {
               <Button type="text" onClick={() => setShowAISidebar(false)}>关闭</Button>
             </div>
             <div style={{ flex: 1, overflow: "hidden" }}>
-               <AISidebar onDraftSaved={handleDraftSaved} />
+              <AISidebar onDraftSaved={handleDraftSaved} />
             </div>
           </div>
         </Sider>

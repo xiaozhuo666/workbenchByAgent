@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, List, Typography, Badge } from "antd";
+import { Modal, List, Typography } from "antd";
 import { CheckCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;
@@ -23,7 +23,7 @@ const AIConfirmationModal = ({ open, onCancel, onConfirm, summary, updates, todo
           {summary}
         </div>
       </div>
-      
+
       <List
         size="small"
         header={<Text type="secondary">变更详情：</Text>}

@@ -43,4 +43,5 @@ class AIStore {
   }
 }
 
-export default new AIStore();
+const aiStore = new AIStore();
+export default aiStore;
