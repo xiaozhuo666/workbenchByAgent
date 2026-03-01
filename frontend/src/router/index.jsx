@@ -1,23 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { Layout, Spin, Typography } from "antd";
+import { Spin } from "antd";
 import AuthPage from "../pages/AuthPage";
+import HomePage from "../pages/HomePage";
 import ProtectedRoute from "./ProtectedRoute";
-import AuthLogoutButton from "../components/AuthLogoutButton";
-import { getUser, restoreSession } from "../services/authStore";
-
-function HomePage() {
-  const user = getUser();
-  return (
-    <Layout style={{ minHeight: "100vh", padding: 24 }}>
-      <Typography.Title level={3}>智能工作台</Typography.Title>
-      <Typography.Paragraph>
-        当前用户：{user?.username || "-"}
-      </Typography.Paragraph>
-      <AuthLogoutButton />
-    </Layout>
-  );
-}
+import { restoreSession } from "../services/authStore";
 
 function AppRouter() {
   const [bootstrapping, setBootstrapping] = useState(true);

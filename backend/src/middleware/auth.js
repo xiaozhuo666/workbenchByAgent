@@ -27,7 +27,10 @@ async function authMiddleware(req, res, next) {
       throw appError(ERROR_CODES.AUTH_SESSION_INVALID, "会话无效或已失效", 401);
     }
 
-    req.auth = payload;
+    req.auth = {
+      ...payload,
+      id: payload.sub ? Number(payload.sub) : undefined,
+    };
     next();
   } catch (error) {
     next(error);

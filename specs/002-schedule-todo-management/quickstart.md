@@ -1,7 +1,8 @@
 # Quickstart: 日程与待办管理 + AI 辅助待办
 
-## 1. 环境变量配置
-确保 `backend/.env` 包含以下新增项：
+## 1. 环境准备
+1. 安装后端依赖：`cd backend && npm install`
+2. 配置环境变量：确保 `backend/.env` 包含以下新增项：
 ```env
 # DashScope (OpenAI Compatible)
 DASHSCOPE_API_KEY=your_api_key_here

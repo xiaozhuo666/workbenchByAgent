@@ -4,6 +4,9 @@ const env = require("./config/env");
 const requestContext = require("./middleware/requestContext");
 const { errorHandler } = require("./middleware/errorHandler");
 const authRoutes = require("./modules/auth/auth.routes");
+const todoRoutes = require("./modules/todo/todo.routes");
+const scheduleRoutes = require("./modules/schedule/schedule.routes");
+const aiRoutes = require("./modules/ai/ai.routes");
 
 const app = express();
 
@@ -16,6 +19,9 @@ app.get("/api/health", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/todos", todoRoutes);
+app.use("/api/schedules", scheduleRoutes);
+app.use("/api/ai", aiRoutes);
 
 app.use(errorHandler);
 

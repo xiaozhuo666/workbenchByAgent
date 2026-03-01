@@ -1,0 +1,47 @@
+:root {
+  --sidebar-bg: #f5f7fa;
+  --sidebar-item-active: #e6f7ff;
+  --sidebar-item-hover: #f0f5ff;
+  --primary-color: #1677ff;
+  --border-color: #f0f0f0;
+}
+
+.home-layout {
+  min-height: 100vh;
+}
+
+.sider-content {
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border-color);
+}
+
+.sider-menu {
+  background: transparent;
+  border-right: none;
+}
+
+.logo-container {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  font-weight: bold;
+  font-size: 18px;
+  color: var(--primary-color);
+}
+
+.main-content {
+  background: #fff;
+  padding: 24px;
+  overflow: auto;
+}
+
+.user-info-footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  padding: 16px;
+  border-top: 1px solid var(--border-color);
+  background: var(--sidebar-bg);
+}
