@@ -2,12 +2,12 @@
 
 **Feature Branch**: `001-auth-login-register`  
 **Created**: 2026-03-01  
-**Status**: Draft  
+**Status**: MVP Completed（US1 注册/登录 + US2 登录态保持与退出 已交付并验证）  
 **Input**: User description: "请为智能工作台助手创建第一个功能规格：实现基本的登录/注册能力，范围包含注册、登录、会话保持、登出与未登录拦截。"
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - 账号注册与登录 (Priority: P1)
+### User Story 1 - 账号注册与登录 (Priority: P1) ✅ 已实现
 
 作为首次使用工作台的用户，我可以创建账号并使用账号登录系统，成功进入工作台首页。
 
@@ -23,7 +23,7 @@
 
 ---
 
-### User Story 2 - 登录态保持与退出 (Priority: P1)
+### User Story 2 - 登录态保持与退出 (Priority: P1) ✅ 已实现
 
 作为已登录用户，我在刷新页面后无需重复登录；当我主动退出后，需要重新登录才能访问工作台功能。
 
@@ -35,6 +35,8 @@
 
 1. **Given** 用户已登录且登录态有效，**When** 用户刷新页面或重新打开应用，**Then** 系统保持已登录状态并允许继续访问工作台。
 2. **Given** 用户已登录，**When** 用户执行登出操作，**Then** 系统清除客户端与服务端登录态并返回登录页。
+
+**实现验证（2026-03-01）**: 后端 `GET /api/auth/me`、`POST /api/auth/logout` 已实现；前端启动时调用 `restoreSession()` 拉取 `/me` 恢复用户信息，`ProtectedRoute` 无 token 时重定向至 `/auth`，`AuthLogoutButton` 调用登出 API 并清理本地存储，`httpClient` 在 401/403 时自动清除登录态；契约测试与前端守卫测试已覆盖。
 
 ---
 

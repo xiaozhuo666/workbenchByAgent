@@ -50,19 +50,45 @@ REACT_APP_API_BASE_URL=http://localhost:4000/api
 
 ## 5. 前端接入顺序
 
-1. 完成登录页、注册页（antd + less）及基础校验。
+1. 完成统一认证页（登录/注册同页切换，antd + CSS）及基础校验。
 2. 对接 `authApi`，处理成功与失败提示。
 3. 建立 `authStore` 管理 token 与用户信息。
 4. 接入 `ProtectedRoute`，实现未登录拦截。
 5. 增加登出入口并清理本地登录态。
 
+### UI 视觉规范（新增）
+
+- 认证入口统一为 `GET /auth`，通过 `mode=login|register` 在同一卡片内切换登录/注册。
+- 登录与注册共享双栏布局（品牌信息区 + 表单区），移动端自动折叠为单栏。
+- 布局风格参考云控制台登录页：左侧科技视觉区、右侧固定宽度认证窗（约 360px 表单区）。
+- 使用渐变背景、品牌说明卡片、统一的按钮与表单圆角样式，保持视觉一致性。
+- 错误提示采用“顶部 Alert + 字段级错误”双通道反馈，降低用户重试成本。
+
+### 路由说明（实现态）
+
+- 主认证入口：`/auth`
+- 兼容重定向：`/login -> /auth?mode=login`，`/register -> /auth?mode=register`
+
 ## 6. 联调检查
 
+**User Story 1**
 - 注册成功后可立即登录。
 - 重复用户名注册被拒绝且提示明确。
 - 错误密码登录失败并返回标准错误码。
-- 刷新后调用 `/auth/me`，登录态可恢复。
-- 登出后原 token 不可继续访问受保护接口。
+
+**User Story 2（登录态保持与退出）**
+- 刷新后调用 `GET /api/auth/me`，登录态可恢复（前端启动时 `restoreSession()` 已接入）。
+- 登出后原 token 不可继续访问受保护接口；前端清除本地存储并跳转至认证页。
+
+### 错误码与前端提示映射
+
+- `AUTH_INVALID_CREDENTIALS` -> 账号或密码错误
+- `AUTH_USERNAME_EXISTS` -> 用户名已存在
+- `AUTH_EMAIL_EXISTS` -> 邮箱已被注册
+- `AUTH_INVALID_EMAIL` -> 邮箱格式不正确或未填写
+- `AUTH_PASSWORD_WEAK` -> 密码强度不足
+- `AUTH_TOKEN_MISSING` / `AUTH_TOKEN_INVALID` / `AUTH_TOKEN_EXPIRED` / `AUTH_SESSION_INVALID` -> 请重新登录
+- `SYS_INTERNAL_ERROR` -> 系统繁忙，请稍后重试
 
 ## 7. 最小测试集合
 

@@ -20,13 +20,13 @@
 
 **Purpose**: 项目初始化与基础开发环境准备
 
-- [ ] T001 Create backend project skeleton and npm scripts in `backend/package.json`
-- [ ] T002 Create frontend project skeleton and npm scripts in `frontend/package.json`
-- [ ] T003 [P] Add backend environment template in `backend/.env.example`
-- [ ] T004 [P] Add frontend environment template in `frontend/.env.example`
-- [ ] T005 [P] Initialize backend app entry and health route in `backend/src/app.js`
-- [ ] T006 [P] Initialize frontend app shell and router entry in `frontend/src/router/index.jsx`
-- [ ] T007 [P] Add shared auth error code constants in `backend/src/utils/errorCodes.js`
+- [x] T001 Create backend project skeleton and npm scripts in `backend/package.json`
+- [x] T002 Create frontend project skeleton and npm scripts in `frontend/package.json`
+- [x] T003 [P] Add backend environment template in `backend/.env.example`
+- [x] T004 [P] Add frontend environment template in `frontend/.env.example`
+- [x] T005 [P] Initialize backend app entry and health route in `backend/src/app.js`
+- [x] T006 [P] Initialize frontend app shell and router entry in `frontend/src/router/index.jsx`
+- [x] T007 [P] Add shared auth error code constants in `backend/src/utils/errorCodes.js`
 
 ---
 
@@ -36,15 +36,15 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T008 Create MySQL migration script for `users` and `sessions` tables in `backend/scripts/migrate.sql`
-- [ ] T009 Implement database connection pool and config loader in `backend/src/db/index.js`
-- [ ] T010 [P] Implement bcrypt/hash and JWT helper utilities in `backend/src/utils/crypto.js`
-- [ ] T011 [P] Implement JWT auth middleware with session/jti verification in `backend/src/middleware/auth.js`
-- [ ] T012 [P] Implement request validation helpers for auth payloads in `backend/src/modules/auth/auth.validator.js`
-- [ ] T013 Implement unified API error middleware and response envelope in `backend/src/middleware/errorHandler.js`
-- [ ] T014 Configure CORS, JSON parser, and middleware wiring in `backend/src/app.js`
-- [ ] T015 Create auth data access base methods in `backend/src/modules/auth/auth.repository.js`
-- [ ] T016 Wire auth route mount and API prefix in `backend/src/app.js`
+- [x] T008 Create MySQL migration script for `users` and `sessions` tables in `backend/scripts/migrate.sql`
+- [x] T009 Implement database connection pool and config loader in `backend/src/db/index.js`
+- [x] T010 [P] Implement bcrypt/hash and JWT helper utilities in `backend/src/utils/crypto.js`
+- [x] T011 [P] Implement JWT auth middleware with session/jti verification in `backend/src/middleware/auth.js`
+- [x] T012 [P] Implement request validation helpers for auth payloads in `backend/src/modules/auth/auth.validator.js`
+- [x] T013 Implement unified API error middleware and response envelope in `backend/src/middleware/errorHandler.js`
+- [x] T014 Configure CORS, JSON parser, and middleware wiring in `backend/src/app.js`
+- [x] T015 Create auth data access base methods in `backend/src/modules/auth/auth.repository.js`
+- [x] T016 Wire auth route mount and API prefix in `backend/src/app.js`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -60,26 +60,27 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T017 [P] [US1] Add contract test for `POST /api/auth/register` in `backend/tests/contract/auth.register.contract.test.js`
-- [ ] T018 [P] [US1] Add contract test for `POST /api/auth/login` in `backend/tests/contract/auth.login.contract.test.js`
-- [ ] T019 [P] [US1] Add integration test for duplicate username in `backend/tests/integration/auth.register-duplicate.test.js`
-- [ ] T020 [P] [US1] Add frontend test for login/register form validation in `frontend/tests/auth/auth.forms.test.jsx`
+- [x] T017 [P] [US1] Add contract test for `POST /api/auth/register` in `backend/tests/contract/auth.register.contract.test.js`
+- [x] T018 [P] [US1] Add contract test for `POST /api/auth/login` in `backend/tests/contract/auth.login.contract.test.js`
+- [x] T019 [P] [US1] Add integration test for duplicate username in `backend/tests/integration/auth.register-duplicate.test.js`
+- [x] T020 [P] [US1] Add frontend test for login/register form validation in `frontend/tests/auth/auth.forms.test.jsx`
 
 ### Implementation for User Story 1
 
-- [ ] T021 [US1] Implement register repository operations (`findByUsername`, `createUser`) in `backend/src/modules/auth/auth.repository.js`
-- [ ] T022 [US1] Implement login repository operations (`findByAccount`) in `backend/src/modules/auth/auth.repository.js`
-- [ ] T023 [US1] Implement register business flow (validate, hash, persist) in `backend/src/modules/auth/auth.service.js`
-- [ ] T024 [US1] Implement login business flow (credential check, sign JWT, create session) in `backend/src/modules/auth/auth.service.js`
-- [ ] T025 [US1] Implement register/login controllers and response mapping in `backend/src/modules/auth/auth.controller.js`
-- [ ] T026 [US1] Implement register/login routes in `backend/src/modules/auth/auth.routes.js`
-- [ ] T027 [US1] Implement auth API client (`register`, `login`) in `frontend/src/api/authApi.js`
-- [ ] T028 [US1] Implement auth state store for token and user in `frontend/src/services/authStore.js`
-- [ ] T029 [US1] Build register page with antd + less form in `frontend/src/pages/RegisterPage/index.jsx`
-- [ ] T030 [US1] Build register page styles in `frontend/src/pages/RegisterPage/index.less`
-- [ ] T031 [US1] Build login page with antd + less form in `frontend/src/pages/LoginPage/index.jsx`
-- [ ] T032 [US1] Build login page styles and error states in `frontend/src/pages/LoginPage/index.less`
-- [ ] T033 [US1] Add login-success navigation to protected home route in `frontend/src/router/index.jsx`
+- [x] T021 [US1] Implement register repository operations (`findByUsername`, `createUser`) in `backend/src/modules/auth/auth.repository.js`
+- [x] T022 [US1] Implement login repository operations (`findByAccount`) in `backend/src/modules/auth/auth.repository.js`
+- [x] T023 [US1] Implement register business flow (validate, hash, persist) in `backend/src/modules/auth/auth.service.js`
+- [x] T024 [US1] Implement login business flow (credential check, sign JWT, create session) in `backend/src/modules/auth/auth.service.js`
+- [x] T025 [US1] Implement register/login controllers and response mapping in `backend/src/modules/auth/auth.controller.js`
+- [x] T026 [US1] Implement register/login routes in `backend/src/modules/auth/auth.routes.js`
+- [x] T027 [US1] Implement auth API client (`register`, `login`) in `frontend/src/api/authApi.js`
+- [x] T028 [US1] Implement auth state store for token and user in `frontend/src/services/authStore.js`
+- [x] T029 [US1] Build register form and validation in auth flow in `frontend/src/pages/RegisterPage/index.jsx`
+- [x] T030 [US1] Build register styles in `frontend/src/pages/RegisterPage/index.less`
+- [x] T031 [US1] Build login form and error states in auth flow in `frontend/src/pages/LoginPage/index.jsx`
+- [x] T032 [US1] Build login styles and error states in `frontend/src/pages/LoginPage/index.less`
+- [x] T033 [US1] Add login-success navigation to protected home route in `frontend/src/router/index.jsx`
+- [x] T051 [US1] Merge login/register into unified auth page and route (`/auth`) in `frontend/src/pages/AuthPage/index.jsx` and `frontend/src/router/index.jsx`
 
 **Checkpoint**: User Story 1 should be fully functional and independently testable
 
@@ -93,24 +94,26 @@
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T034 [P] [US2] Add contract test for `GET /api/auth/me` in `backend/tests/contract/auth.me.contract.test.js`
-- [ ] T035 [P] [US2] Add contract test for `POST /api/auth/logout` in `backend/tests/contract/auth.logout.contract.test.js`
-- [ ] T036 [P] [US2] Add integration test for token revocation after logout in `backend/tests/integration/auth.logout-revoke.test.js`
-- [ ] T037 [P] [US2] Add frontend test for route guard and restore flow in `frontend/tests/auth/auth.guard-restore.test.jsx`
+- [x] T034 [P] [US2] Add contract test for `GET /api/auth/me` in `backend/tests/contract/auth.me.contract.test.js`
+- [x] T035 [P] [US2] Add contract test for `POST /api/auth/logout` in `backend/tests/contract/auth.logout.contract.test.js`
+- [x] T036 [P] [US2] Add integration test for token revocation after logout in `backend/tests/integration/auth.logout-revoke.test.js`
+- [x] T037 [P] [US2] Add frontend test for route guard and restore flow in `frontend/tests/auth/auth.guard-restore.test.jsx`
 
 ### Implementation for User Story 2
 
-- [ ] T038 [US2] Implement `getCurrentUser` and `logout` session logic in `backend/src/modules/auth/auth.service.js`
-- [ ] T039 [US2] Implement `/me` and `/logout` controllers in `backend/src/modules/auth/auth.controller.js`
-- [ ] T040 [US2] Add `/me` and `/logout` routes with auth middleware in `backend/src/modules/auth/auth.routes.js`
-- [ ] T041 [US2] Extend auth API client (`me`, `logout`) in `frontend/src/api/authApi.js`
-- [ ] T042 [US2] Implement token restore/bootstrap logic on app load in `frontend/src/services/authStore.js`
-- [ ] T043 [US2] Implement protected route guard in `frontend/src/router/ProtectedRoute.jsx`
-- [ ] T044 [US2] Wire protected route and unauthorized redirect handling in `frontend/src/router/index.jsx`
-- [ ] T045 [US2] Implement logout action and UI entry in `frontend/src/components/AuthLogoutButton.jsx`
-- [ ] T046 [US2] Add global 401/403 interceptor and auto-clear auth state in `frontend/src/api/httpClient.js`
+- [x] T038 [US2] Implement `getCurrentUser` and `logout` session logic in `backend/src/modules/auth/auth.service.js`
+- [x] T039 [US2] Implement `/me` and `/logout` controllers in `backend/src/modules/auth/auth.controller.js`
+- [x] T040 [US2] Add `/me` and `/logout` routes with auth middleware in `backend/src/modules/auth/auth.routes.js`
+- [x] T041 [US2] Extend auth API client (`me`, `logout`) in `frontend/src/api/authApi.js`
+- [x] T042 [US2] Implement token restore/bootstrap logic on app load in `frontend/src/services/authStore.js`
+- [x] T043 [US2] Implement protected route guard in `frontend/src/router/ProtectedRoute.jsx`
+- [x] T044 [US2] Wire protected route and unauthorized redirect handling in `frontend/src/router/index.jsx`
+- [x] T045 [US2] Implement logout action and UI entry in `frontend/src/components/AuthLogoutButton.jsx`
+- [x] T046 [US2] Add global 401/403 interceptor and auto-clear auth state in `frontend/src/api/httpClient.js`
 
-**Checkpoint**: User Story 1 and User Story 2 should both work independently
+**Checkpoint**: User Story 1 and User Story 2 should both work independently  
+
+*验收说明*: US2 已于 2026-03-01 通过代码走查确认——后端 `/me`、`/logout` 及 session 撤销、前端 `restoreSession`、`ProtectedRoute`、`AuthLogoutButton`、401/403 清态均已实现，契约与前端守卫测试在列。
 
 ---
 
@@ -118,10 +121,10 @@
 
 **Purpose**: 联调收口、安全加固、文档同步与验收走查
 
-- [ ] T047 [P] Add request id and sensitive-field log masking in `backend/src/middleware/requestContext.js`
-- [ ] T048 [P] Document API error code mapping and UI messages in `specs/001-auth-login-register/quickstart.md`
-- [ ] T049 Run end-to-end MVP checklist validation in `specs/001-auth-login-register/checklists/mvp-validation.md`
-- [ ] T050 Run quickstart verification and update execution notes in `specs/001-auth-login-register/quickstart.md`
+- [x] T047 [P] Add request id and sensitive-field log masking in `backend/src/middleware/requestContext.js`
+- [x] T048 [P] Document API error code mapping and UI messages in `specs/001-auth-login-register/quickstart.md`
+- [x] T049 Run end-to-end MVP checklist validation in `specs/001-auth-login-register/checklists/mvp-validation.md`
+- [x] T050 Run quickstart verification and update execution notes in `specs/001-auth-login-register/quickstart.md`
 
 ---
 
@@ -198,6 +201,9 @@ Task: "T037 [US2] frontend/tests/auth/auth.guard-restore.test.jsx"
 
 ## Notes
 
-- 每条任务均满足格式：`- [ ] Txxx [P?] [US?] 描述 + 文件路径`
+- 每条任务均满足格式：`- [x] Txxx [P?] [US?] 描述 + 文件路径`
 - 建议 MVP 范围：**仅 US1（Phase 3）**
 - 完成 US1 后即可进入 `/speckit.implement` 分阶段开发
+- 已追加一次登录/注册页面视觉升级迭代，并同步更新 `quickstart.md` 的 UI 与错误码说明。
+- 已完成统一认证页重构（登录/注册同页切换，主入口 `/auth`，`/login` 与 `/register` 保留兼容重定向）。
+- User Story 2（登录态保持与退出）已实现并验收，MVP 双故事交付完成。
