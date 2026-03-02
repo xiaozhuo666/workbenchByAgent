@@ -315,9 +315,9 @@ const AISidebar = ({ onDraftSaved }) => {
                         type="link" 
                         size="small" 
                         style={{ padding: 0, height: "auto", textAlign: "left", fontSize: 13 }}
-                        onClick={() => processSend("帮我安排明天上午的会议，提醒我明天下午买牛奶")}
+                        onClick={() => processSend("帮我安排今天上午的会议，提醒我明天下午买牛奶")}
                       >
-                        “帮我安排明天上午的会议，提醒我明天下午买牛奶”
+                        “帮我安排今天上午的会议，提醒我明天下午买牛奶”
                       </Button>
                       <Button 
                         type="link" 
