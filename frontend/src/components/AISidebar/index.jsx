@@ -7,7 +7,8 @@ import {
   GlobalOutlined
 } from "@ant-design/icons";
 import aiStore from "../../services/aiStore";
-import { getTodos, batchUpdateTodoStatus } from "../../api/todoApi";
+import { getTodos, batchUpdateTodoStatus, createTodo } from "../../api/todoApi";
+import { createSchedule } from "../../api/scheduleApi";
 import AIConfirmationModal from "../AIConfirmationModal";
 import ConversationList from "../AI/ConversationList";
 import ModelSelector from "../AI/ModelSelector";
@@ -88,9 +89,18 @@ const AISidebar = ({ onDraftSaved }) => {
     try {
       // 1. Check for batch commands or task generation first (Legacy features)
       const currentTodos = await getTodos();
-      const commandResult = await aiStore.executeCommand(text, currentTodos);
+      const commandResult = await aiStore.executeCommand(text, currentTodos, conversationId);
       
-      if (commandResult.updates && commandResult.updates.length > 0) {
+      // 增加 summary 判断，只有 AI 确认是操作指令且有更新项时才弹出
+      if (commandResult.updates && commandResult.updates.length > 0 && commandResult.summary !== "不是操作指令") {
+        if (commandResult.conversationId && !conversationId) {
+          setConversationId(commandResult.conversationId);
+        }
+        // 同步后端已保存的确认消息到前端状态中，确保对话历史实时展示
+        setMessages(prev => [...prev, { 
+          role: "assistant", 
+          content: commandResult.summary || "已识别出批量操作指令，请确认："
+        }]);
         setConfirmationModal({
           open: true,
           summary: commandResult.summary,
@@ -101,12 +111,16 @@ const AISidebar = ({ onDraftSaved }) => {
         return;
       }
 
-      const drafts = await aiStore.generateTasks(text);
-      if (drafts.length > 0) {
+      const res = await aiStore.generateTasks(text, conversationId);
+      if (res.tasks && res.tasks.length > 0) {
+        if (res.conversationId && !conversationId) {
+          setConversationId(res.conversationId);
+        }
+        const reply = `我已为你解析出 ${res.tasks.length} 个任务，是否保存？`;
         setMessages(prev => [...prev, { 
           role: "assistant", 
-          content: `我已为你解析出 ${drafts.length} 个任务，是否保存？`,
-          drafts: drafts 
+          content: reply,
+          drafts: res.tasks 
         }]);
         setLoading(false);
         return;
@@ -171,6 +185,57 @@ const AISidebar = ({ onDraftSaved }) => {
     message.success("内容已导出");
   };
 
+  /**
+   * 保存所有解析出的任务
+   */
+  const handleSaveDrafts = async (drafts, index) => {
+    if (!drafts || drafts.length === 0) return;
+    
+    setLoading(true);
+    try {
+      const promises = drafts.map(draft => {
+        if (draft.type === "todo") {
+          return createTodo({
+            title: draft.title,
+            description: draft.description || "",
+            status: "pending"
+          });
+        } else if (draft.type === "schedule") {
+          return createSchedule({
+            title: draft.title,
+            description: draft.description || "",
+            startTime: draft.startTime,
+            endTime: draft.endTime
+          });
+        }
+        return Promise.resolve();
+      });
+
+      await Promise.all(promises);
+      
+      message.success(`成功保存 ${drafts.length} 个任务`);
+      
+      // 在消息列表中标记为已保存
+      setMessages(prev => {
+        const newMessages = [...prev];
+        if (newMessages[index]) {
+          newMessages[index] = { ...newMessages[index], saved: true };
+        }
+        return newMessages;
+      });
+
+      // 触发回调以刷新主列表（如果提供了）
+      if (onDraftSaved) {
+        onDraftSaved();
+      }
+    } catch (error) {
+      console.error("Failed to save drafts:", error);
+      message.error("保存任务失败，请重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#fff", position: "relative", overflow: "hidden" }}>
       {/* Header & Controls */}
@@ -205,11 +270,13 @@ const AISidebar = ({ onDraftSaved }) => {
         styles={{ body: { padding: 0 } }}
         getContainer={false}
       >
-        <ConversationList 
-          activeId={conversationId} 
-          onSelect={handleSelectConversation}
-          onNewChat={handleNewChat}
-        />
+        {showHistory && (
+          <ConversationList 
+            activeId={conversationId} 
+            onSelect={handleSelectConversation}
+            onNewChat={handleNewChat}
+          />
+        )}
       </Drawer>
 
       {/* Message List */}
@@ -322,10 +389,7 @@ const AISidebar = ({ onDraftSaved }) => {
                       icon={<PlusOutlined />} 
                       style={{ marginTop: 12 }}
                       disabled={msg.saved}
-                      onClick={() => {
-                        // Implement save drafts logic if needed
-                        message.success("任务已保存到待办/日程");
-                      }}
+                      onClick={() => handleSaveDrafts(msg.drafts, index)}
                     >
                       {msg.saved ? "已保存" : "全部保存"}
                     </Button>
@@ -348,8 +412,8 @@ const AISidebar = ({ onDraftSaved }) => {
         updates={confirmationModal.updates}
         todos={confirmationModal.todos}
         onCancel={() => setConfirmationModal({ ...confirmationModal, open: false })}
-        onConfirm={() => {
-          batchUpdateTodoStatus(confirmationModal.updates);
+        onConfirm={async () => {
+          await batchUpdateTodoStatus(confirmationModal.updates);
           setConfirmationModal({ ...confirmationModal, open: false });
           onDraftSaved && onDraftSaved();
         }}

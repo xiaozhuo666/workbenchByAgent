@@ -1,13 +1,13 @@
 import httpClient from "../api/httpClient";
 
 class AIStore {
-  async generateTasks(text) {
-    const { data } = await httpClient.post("/ai/generate-tasks", { text });
+  async generateTasks(text, conversationId = null) {
+    const { data } = await httpClient.post("/ai/generate-tasks", { text, conversationId });
     return data.data;
   }
 
-  async executeCommand(text, currentTodos) {
-    const { data } = await httpClient.post("/ai/execute-command", { text, currentTodos });
+  async executeCommand(text, currentTodos, conversationId = null) {
+    const { data } = await httpClient.post("/ai/execute-command", { text, currentTodos, conversationId });
     return data.data;
   }
 

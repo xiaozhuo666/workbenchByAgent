@@ -33,14 +33,29 @@ async function createConversation(id, userId, title, model) {
  * Save a message within a conversation
  */
 async function saveMessage(conversationId, role, content) {
+  const connection = await pool.getConnection();
   try {
-    await pool.execute(
+    await connection.beginTransaction();
+    
+    // 1. Save message
+    await connection.execute(
       "INSERT INTO ai_messages (conversation_id, role, content) VALUES (?, ?, ?)",
       [conversationId, role, content]
     );
+
+    // 2. Update conversation's updated_at timestamp
+    await connection.execute(
+      "UPDATE ai_conversations SET updated_at = NOW() WHERE id = ?",
+      [conversationId]
+    );
+
+    await connection.commit();
   } catch (err) {
+    await connection.rollback();
     console.error("Failed to save message:", err);
     throw err;
+  } finally {
+    connection.release();
   }
 }
 

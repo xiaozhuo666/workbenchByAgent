@@ -6,74 +6,83 @@ const openai = new OpenAI({
   baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
 });
 
-async function generateTasks(text) {
+async function generateTasks(text, conversationHistory = []) {
+  const filteredHistory = [...conversationHistory];
+  if (filteredHistory.length > 0 && 
+      filteredHistory[filteredHistory.length - 1].role === "user" && 
+      filteredHistory[filteredHistory.length - 1].content === text) {
+    filteredHistory.pop();
+  }
+
   const response = await openai.chat.completions.create({
     model: "qwen-plus",
     messages: [
       {
         role: "system",
-        content: `你是一个专业的任务管理助手。请将用户输入的自然语言转化为待办事项或日程。
+        content: `你是一个专业的任务管理助手。
+        【核心任务】：仅在用户“当前”输入中包含明确的“待办事项”或“日程安排”时进行解析。
+        【严禁脑补】：如果用户在聊天、问技术问题、或进行日常对话，请务必返回 {"tasks": []}。
+        【上下文使用】：历史记录仅用于辅助理解代词（如“把它也加上”中的“它”），不要被历史记录干扰当前的意图判断。
+        
         要求：
-        1. 仅返回 JSON 对象，包含一个 "tasks" 数组。
-        2. 每个任务对象包含: 
-           - "type": "todo" 或 "schedule"
-           - "title": 标题
-           - "description": 描述 (可选)
-           - "startTime": 对于 schedule 是必填的 (格式: YYYY-MM-DD HH:mm:ss)
-           - "endTime": 对于 schedule 是可选的 (格式: YYYY-MM-DD HH:mm:ss)
-        3. 如果没有明确的时间，默认为 "todo"。如果有具体时间点或时间段，设为 "schedule"。
-        4. 当前时间是: ${dayjs().format("YYYY-MM-DD HH:mm:ss")} (星期${['日','一','二','三','四','五','六'][dayjs().day()]})。
-        5. 请特别注意：
-           - 如果用户提到“明天”、“下周”等相对时间，请根据当前时间计算出正确的绝对日期。
-           - 如果用户只提到了时间点（如“10点”），且该时间在今天已过去，请默认设为“明天”。
-           - 如果用户说“周五”，请根据当前日期找到接下来的那个周五的日期。
-        6. 不要包含任何解释或 Markdown 代码块标识。`
+        1. 返回 JSON 对象，包含 "tasks" 数组。
+        2. 每个任务对象包含: "type" ("todo"|"schedule"), "title", "description", "startTime", "endTime"。
+        3. 当前时间: ${dayjs().format("YYYY-MM-DD HH:mm:ss")}。
+        4. 必须返回纯 JSON，不要包含任何解释。`
       },
+      ...filteredHistory.slice(-3), 
       { role: "user", content: text }
     ]
   });
 
   const content = response.choices[0].message.content;
   try {
-    const jsonStr = content.replace(/```json|```/g, "").trim();
-    const data = JSON.parse(jsonStr);
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return [];
+    
+    const data = JSON.parse(jsonMatch[0]);
     return data.tasks || [];
   } catch (error) {
-    console.error("AI Parsing Error:", error, content);
-    throw new Error("AI 助手解析任务失败");
+    return [];
   }
 }
 
-async function executeBatchCommand(text, todos) {
+async function executeBatchCommand(text, todos, conversationHistory = []) {
+  const filteredHistory = [...conversationHistory];
+  if (filteredHistory.length > 0 && 
+      filteredHistory[filteredHistory.length - 1].role === "user" && 
+      filteredHistory[filteredHistory.length - 1].content === text) {
+    filteredHistory.pop();
+  }
+
   const response = await openai.chat.completions.create({
     model: "qwen-plus",
     messages: [
       {
         role: "system",
-        content: `你是一个专业的任务管理助手。请根据用户的自然语言指令，从现有的待办列表中识别出需要操作的任务及其新状态。
-        
-        现有任务列表 (JSON): ${JSON.stringify(todos)}
+        content: `你是一个待办列表操作专家。
+        【现有任务列表】: ${JSON.stringify(todos)}
+        【核心任务】：仅当用户“当前”输入明确要求修改、删除或完成上述列表中的任务时，才生成操作指令。
+        【拒绝无关请求】：如果用户当前输入是问问题、写代码、聊天，或者与任务列表无关，必须返回 {"updates": [], "summary": "不是操作指令"}。
+        【严格匹配】：不要因为历史记录中包含之前的操作就重复执行。
         
         要求：
-        1. 仅返回 JSON 对象，包含: 
-           - "updates": 数组，每个对象包含 "id" (任务 ID) 和 "status" ('pending', 'completed' 或 'delete')。
-           - "summary": 字符串，简述你准备执行的操作。
-        2. 仅识别用户明确要求更改的任务。
-        3. 如果用户提及“删除”、“移除”、“去掉”某些任务，请将 status 设为 'delete'。
-        4. 如果用户指令不是为了更新或删除现有状态（例如是想新建任务），则返回 {"updates": [], "summary": "不是操作指令"}。
-        5. 不要包含任何解释或 Markdown 代码块标识。`
+        1. 返回 JSON：{"updates": [{"id":..., "status":...}], "summary": "..."}。
+        2. 不要包含解释。`
       },
+      ...filteredHistory.slice(-3), 
       { role: "user", content: text }
     ]
   });
 
   const content = response.choices[0].message.content;
   try {
-    const jsonStr = content.replace(/```json|```/g, "").trim();
-    return JSON.parse(jsonStr);
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { updates: [], summary: "不是操作指令" };
+    
+    return JSON.parse(jsonMatch[0]);
   } catch (error) {
-    console.error("AI Command Parsing Error:", error, content);
-    throw new Error("无法解析您的批量操作指令");
+    return { updates: [], summary: "不是操作指令" };
   }
 }
 
@@ -81,6 +90,13 @@ async function executeBatchCommand(text, todos) {
  * Chat with AI (supports streaming)
  */
 async function chat({ text, conversationHistory = [], model = "qwen-plus", stream = false }) {
+  const filteredHistory = [...conversationHistory];
+  if (filteredHistory.length > 0 && 
+      filteredHistory[filteredHistory.length - 1].role === "user" && 
+      filteredHistory[filteredHistory.length - 1].content === text) {
+    filteredHistory.pop();
+  }
+
   const messages = [
     {
       role: "system",
@@ -98,7 +114,7 @@ async function chat({ text, conversationHistory = [], model = "qwen-plus", strea
       - 回答要简洁明了，避免过长
       - 使用中文回答`
     },
-    ...conversationHistory,
+    ...filteredHistory,
     { role: "user", content: text }
   ];
 
