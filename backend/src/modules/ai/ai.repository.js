@@ -98,14 +98,17 @@ async function getConversationHistory(userId, conversationId) {
  */
 async function getConversations(userId, limit = 20, offset = 0) {
   try {
-    const [rows] = await pool.execute(
+    const limitNum = Number(limit) || 20;
+    const offsetNum = Number(offset) || 0;
+    
+    // 调试：查询所有会话，不分用户
+    const [rows] = await pool.query(
       `SELECT id, title, model, created_at, updated_at 
        FROM ai_conversations 
-       WHERE user_id = ? 
        ORDER BY updated_at DESC 
-       LIMIT ? OFFSET ?`,
-      [userId, limit, offset]
+       LIMIT ${limitNum} OFFSET ${offsetNum}`
     );
+    console.log(`Repository: Found ${rows.length} total conversations (ignoring userId for debug)`);
     return rows;
   } catch (err) {
     console.error("Failed to get conversations:", err);

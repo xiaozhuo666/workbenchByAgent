@@ -104,9 +104,11 @@ class AIStore {
   }
 
   async listConversations(limit = 20, offset = 0) {
+    console.log(`AIStore: listConversations calling ${httpClient.defaults.baseURL}/ai/conversations`);
     const { data } = await httpClient.get("/ai/conversations", {
       params: { limit, offset }
     });
+    console.log('AIStore: listConversations result:', data);
     return data.data;
   }
 

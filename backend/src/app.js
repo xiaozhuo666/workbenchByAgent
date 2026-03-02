@@ -10,18 +10,17 @@ const aiRoutes = require("./modules/ai/ai.routes");
 
 const app = express();
 
-// 详细的请求日志记录（放在 CORS 之前，用于诊断 preflight 预检请求）
+// 极其详细的全局请求日志（放在最前面，确保任何请求都能被记录）
 app.use((req, res, next) => {
-  if (req.method === "OPTIONS") {
-    console.log(`${new Date().toISOString()} [PREFLIGHT] ${req.method} ${req.url} Origin: ${req.get('origin') || 'none'}`);
-  } else {
-    console.log(`${new Date().toISOString()} [REQUEST] ${req.method} ${req.url} Origin: ${req.get('origin') || 'none'}`);
-  }
+  const origin = req.get('origin') || 'no-origin';
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${origin} - IP: ${req.ip}`);
   next();
 });
 
 app.use(cors({ 
-  origin: true, // 允许所有来源（反射请求头中的 Origin），解决本地开发中的 localhost vs 127.0.0.1 问题
+  origin: (origin, callback) => {
+    callback(null, true);
+  },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]
