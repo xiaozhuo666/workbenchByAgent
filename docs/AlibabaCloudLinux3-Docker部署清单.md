@@ -12,6 +12,16 @@
   - `frontend`（Nginx 托管前端静态资源，并代理 `/api`）
 - 通过 **子路径** 访问应用：`http://118.31.52.245/ai_project/workbenchByAgent`（前端与 API 均在该路径下；根路径 `/` 仍可访问旧版或占位）。
 
+### 0.1 通过哪个端口访问？
+
+| 用途 | 端口 | 地址示例 |
+|------|------|----------|
+| **浏览器访问应用（推荐）** | **80**（可省略不写） | `http://118.31.52.245/ai_project/workbenchByAgent` |
+| 直接调后端 API（调试用） | 4000 | `http://118.31.52.245:4000/api/health` |
+
+- 日常使用只需记 **80 端口**；浏览器里不写端口即默认 80。
+- 在服务器上执行 `docker compose ps` 可查看 **PORTS** 列确认端口映射。
+
 ---
 
 ## 1. 云控制台准备（阿里云）
@@ -233,6 +243,19 @@ docker compose down -v
   ```bash
   docker compose down -v
   docker compose --env-file .env.docker up -d --build
+  ```
+
+### 12.4 打开是 “Welcome to nginx!” 默认页，没看到应用
+
+- **原因 1：宿主机 Nginx 占用了 80 端口**，请求被系统自带的 Nginx 接了，没进 Docker 里的前端容器。
+  - 查看 80 端口占用：`sudo ss -tlnp | grep :80` 或 `sudo lsof -i :80`
+  - 若显示是 `nginx` 且不是 docker，先停掉：`sudo systemctl stop nginx`
+  - 再启动/重启容器：`docker compose --env-file .env.docker up -d`
+- **原因 2：访问地址少了尾部斜杠**。请用：`http://118.31.52.245/ai_project/workbenchByAgent/`（末尾有 `/`）。
+- **原因 3：前端镜像未用当前配置重建**。在项目根目录执行：
+  ```bash
+  docker compose --env-file .env.docker build --no-cache frontend
+  docker compose --env-file .env.docker up -d
   ```
 
 ---
