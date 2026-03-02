@@ -37,7 +37,7 @@ async function createUser({ username, email, passwordHash }) {
 async function createSession({ userId, jti, tokenExpiresAt, ip, userAgent }) {
   await pool.query(
     "INSERT INTO sessions (user_id, jti, token_expires_at, ip, user_agent) VALUES (?, ?, ?, ?, ?)",
-    [userId || null, jti || null, tokenExpiresAt || null, ip || null, userAgent || null]
+    [userId, jti || null, tokenExpiresAt || null, ip || null, userAgent || null]
   );
 }
 

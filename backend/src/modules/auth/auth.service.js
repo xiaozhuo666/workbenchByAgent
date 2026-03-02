@@ -84,9 +84,38 @@ async function logout({ jti }) {
   await repository.revokeSessionByJti(jti);
 }
 
+async function guestToken({ ip, userAgent }) {
+  // Create a special guest user token with a unique identifier
+  // The sub field will be set to a negative number to identify as guest
+  const { token, jti, exp } = signAccessToken({ 
+    sub: "-1",
+    isGuest: true 
+  });
+  
+  // Create session for guest token tracking
+  await repository.createSession({
+    userId: null, // No real user associated
+    jti,
+    tokenExpiresAt: unixToDateTime(exp),
+    ip,
+    userAgent,
+  });
+
+  return { 
+    token,
+    user: {
+      id: -1,
+      username: "访客",
+      email: null,
+      isGuest: true
+    }
+  };
+}
+
 module.exports = {
   register,
   login,
   getCurrentUser,
   logout,
+  guestToken,
 };
