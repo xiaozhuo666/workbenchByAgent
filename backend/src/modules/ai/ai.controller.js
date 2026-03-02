@@ -221,7 +221,6 @@ async function getConversationHistory(req, res, next) {
 async function listConversations(req, res, next) {
   try {
     const { limit = 20, offset = 0 } = req.query;
-    console.log(`Controller: listConversations userId=${req.auth.id}, limit=${limit}, offset=${offset}`);
 
     const conversations = await repository.getConversations(
       req.auth.id,
@@ -229,10 +228,8 @@ async function listConversations(req, res, next) {
       parseInt(offset)
     );
 
-    console.log(`Controller: Returning ${conversations.length} conversations`);
     res.json({ code: "OK", data: conversations });
   } catch (error) {
-    console.error("Controller Error in listConversations:", error);
     next(error);
   }
 }

@@ -108,6 +108,7 @@ const ConversationList = ({ activeId, onSelect, onNewChat }) => {
                       type="text" 
                       size="small" 
                       icon={<DeleteOutlined />} 
+                      onClick={(e) => e.stopPropagation()}
                       style={{ 
                         opacity: hoveredId === item.id ? 1 : 0,
                         transition: "opacity 0.2s"

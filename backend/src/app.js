@@ -10,23 +10,20 @@ const aiRoutes = require("./modules/ai/ai.routes");
 
 const app = express();
 
-// 极其详细的全局请求日志（放在最前面，确保任何请求都能被记录）
-app.use((req, res, next) => {
-  const origin = req.get('origin') || 'no-origin';
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${origin} - IP: ${req.ip}`);
-  next();
-});
-
 app.use(cors({ 
-  origin: (origin, callback) => {
-    callback(null, true);
-  },
+  origin: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]
 }));
 app.use(express.json());
 app.use(requestContext);
+
+// Simple request logger
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
+  next();
+});
 
 app.get("/api/health", (req, res) => {
   res.json({ code: "OK", message: "healthy" });
