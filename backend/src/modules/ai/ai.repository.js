@@ -98,13 +98,16 @@ async function getConversationHistory(userId, conversationId) {
  */
 async function getConversations(userId, limit = 20, offset = 0) {
   try {
-    const [rows] = await pool.execute(
+    const limitNum = Number(limit) || 20;
+    const offsetNum = Number(offset) || 0;
+    
+    const [rows] = await pool.query(
       `SELECT id, title, model, created_at, updated_at 
        FROM ai_conversations 
        WHERE user_id = ? 
        ORDER BY updated_at DESC 
-       LIMIT ? OFFSET ?`,
-      [userId, limit, offset]
+       LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [userId]
     );
     return rows;
   } catch (err) {

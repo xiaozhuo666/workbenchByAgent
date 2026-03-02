@@ -34,6 +34,7 @@ async function authMiddleware(req, res, next) {
     }
 
     const userId = payload.sub ? Number(payload.sub) : undefined;
+    console.log(`AuthMiddleware: token sub=${payload.sub}, userId=${userId}, isGuest=${payload.isGuest}`);
     req.auth = {
       ...payload,
       id: userId,
