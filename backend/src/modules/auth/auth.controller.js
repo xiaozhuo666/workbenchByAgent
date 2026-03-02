@@ -65,9 +65,26 @@ async function logout(req, res, next) {
   }
 }
 
+async function guestToken(req, res, next) {
+  try {
+    const result = await service.guestToken({
+      ip: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+    res.status(200).json({
+      code: "OK",
+      message: "success",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   register,
   login,
   me,
   logout,
+  guestToken,
 };

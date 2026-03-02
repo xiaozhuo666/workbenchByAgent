@@ -25,14 +25,19 @@ async function authMiddleware(req, res, next) {
       throw appError(code, "认证令牌无效", 401);
     }
 
-    const session = await repository.findActiveSessionByJti(payload.jti);
-    if (!session) {
-      throw appError(ERROR_CODES.AUTH_SESSION_INVALID, "会话无效或已失效", 401);
+    // 关键改动：如果是访客，直接跳过数据库 session 验证
+    if (!payload.isGuest) {
+      const session = await repository.findActiveSessionByJti(payload.jti);
+      if (!session) {
+        throw appError(ERROR_CODES.AUTH_SESSION_INVALID, "会话无效或已失效", 401);
+      }
     }
 
+    const userId = payload.sub ? Number(payload.sub) : undefined;
     req.auth = {
       ...payload,
-      id: payload.sub ? Number(payload.sub) : undefined,
+      id: userId,
+      isGuest: payload.isGuest || false,
     };
     next();
   } catch (error) {

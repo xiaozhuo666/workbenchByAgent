@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Layout, Menu, Avatar, Typography, Button, Tooltip } from "antd";
+import React, { useState, useEffect } from "react";
+import { Layout, Menu, Avatar, Typography, Button, Tooltip, Spin } from "antd";
 import {
   MessageOutlined,
   UnorderedListOutlined,
@@ -11,6 +11,7 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { getUser, doLogout } from "../../services/authStore";
+import httpClient from "../../api/httpClient";
 import TodoList from "../../components/TodoList";
 import ScheduleList from "../../components/ScheduleList";
 import AISidebar from "../../components/AISidebar";
@@ -24,8 +25,42 @@ const HomePage = ({ isGuest }) => {
   const [showAISidebar, setShowAISidebar] = useState(true);
   const [activeTab, setActiveTab] = useState("sessions");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [guestLoading, setGuestLoading] = useState(isGuest);
   const user = isGuest ? { username: "访客" } : getUser();
   const navigate = useNavigate();
+
+  // 访客模式下自动获取临时令牌
+  useEffect(() => {
+    if (isGuest && guestLoading) {
+      (async () => {
+        try {
+          console.log("正在为演示模式准备访客令牌...");
+          const response = await httpClient.post("/auth/guest-token");
+          
+          // 后端返回格式是 { code: "OK", data: { token: "...", ... } }
+          const resBody = response.data;
+          const token = resBody?.data?.token;
+
+          if (token) {
+            console.log("令牌获取成功，正在进入演示环境");
+            window.localStorage.setItem("auth_token", token);
+            // 延迟一小会儿确保存储生效，然后关闭加载态
+            setTimeout(() => {
+              setGuestLoading(false);
+              // 触发组件重新渲染
+              setRefreshKey(prev => prev + 1);
+            }, 500);
+          } else {
+            console.error("接口响应中未找到令牌:", resBody);
+            setGuestLoading(false);
+          }
+        } catch (error) {
+          console.error("访客令牌初始化失败:", error);
+          setGuestLoading(false);
+        }
+      })();
+    }
+  }, [isGuest, guestLoading]);
 
   const handleLogout = () => {
     if (isGuest) {
@@ -63,6 +98,9 @@ const HomePage = ({ isGuest }) => {
   };
 
   const renderContent = () => {
+    if (guestLoading) {
+      return <Spin style={{ marginTop: 120, width: "100%" }} tip="初始化访客环境中..." />;
+    }
     switch (activeTab) {
       case "todos":
         return <TodoList key={refreshKey} />;
