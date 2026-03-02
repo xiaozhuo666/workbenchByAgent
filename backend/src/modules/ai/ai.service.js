@@ -77,7 +77,10 @@ async function executeBatchCommand(text, todos) {
   }
 }
 
-async function chat(text, conversationHistory = []) {
+/**
+ * Chat with AI (supports streaming)
+ */
+async function chat({ text, conversationHistory = [], model = "qwen-plus", stream = false }) {
   const messages = [
     {
       role: "system",
@@ -99,18 +102,52 @@ async function chat(text, conversationHistory = []) {
     { role: "user", content: text }
   ];
 
-  const response = await openai.chat.completions.create({
-    model: "qwen-plus",
-    messages: messages,
-    temperature: 0.7,
-    max_tokens: 1000
-  });
+  if (stream) {
+    return await openai.chat.completions.create({
+      model: model,
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 1500,
+      stream: true,
+    });
+  } else {
+    const response = await openai.chat.completions.create({
+      model: model,
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 1500
+    });
+    return response.choices[0].message.content;
+  }
+}
 
-  return response.choices[0].message.content;
+/**
+ * Summarize conversation to generate a title
+ */
+async function generateTitle(messages) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "qwen-plus",
+      messages: [
+        {
+          role: "system",
+          content: "你是一个专业的总结助手。请根据用户的对话内容，生成一个简短、精准的标题（不超过 15 个字）。仅返回标题文本，不要包含任何多余的词汇或 Markdown 代码块标识。"
+        },
+        ...messages.slice(-2), // Take the last message or a small context
+        { role: "user", content: "请为这段对话起一个简洁明了的标题。" }
+      ],
+      max_tokens: 50
+    });
+    return response.choices[0].message.content.trim();
+  } catch (err) {
+    console.error("Failed to generate title:", err);
+    return "新会话";
+  }
 }
 
 module.exports = {
   generateTasks,
   executeBatchCommand,
   chat,
+  generateTitle,
 };

@@ -37,29 +37,96 @@ async function executeCommand(req, res, next) {
   }
 }
 
+/**
+ * Chat with AI (supports sessions and streaming)
+ */
 async function chat(req, res, next) {
   try {
-    const { text, conversationId, conversationHistory = [] } = req.body;
+    const { text, conversationId, model = "qwen-plus", stream = false } = req.body;
+    
+    // Log for debugging
+    console.log("Chat Request Body:", { textLength: text?.length, conversationId, model, stream, type: typeof stream });
+
     if (!text) throw new Error("请输入内容");
     
-    const cid = conversationId || uuidv4();
-    
-    try {
-      await repository.saveMessage(req.auth.id, cid, "user", text);
-    } catch (saveError) {
-      console.error("Failed to save user message:", saveError);
-    }
-    
-    const reply = await service.chat(text, conversationHistory);
-    
-    try {
-      await repository.saveMessage(req.auth.id, cid, "assistant", reply);
-      await repository.logCommand(req.auth.id, text, { reply }, "chat");
-    } catch (logError) {
-      console.error("AI Logging error:", logError);
+    let cid = conversationId;
+    let isNewConversation = false;
+
+    // 1. Resolve or Create Conversation
+    if (!cid) {
+      cid = uuidv4();
+      isNewConversation = true;
+      const initialTitle = text.slice(0, 15) + "..."; // Placeholder title
+      await repository.createConversation(cid, req.auth.id, initialTitle, model);
+    } else {
+      // Verify conversation belongs to user
+      const conversation = await repository.getConversation(req.auth.id, cid);
+      if (!conversation) {
+        throw new Error("会话不存在或无访问权限");
+      }
     }
 
-    res.json({ code: "OK", data: { reply, conversationId: cid } });
+    // 2. Save User Message
+    await repository.saveMessage(cid, "user", text);
+
+    // 3. Get Full History for AI Context
+    const history = await repository.getConversationHistory(req.auth.id, cid);
+    const messages = history.map(h => ({ role: h.role, content: h.content }));
+
+    // 4. Handle Streaming vs Single Reply
+    if (stream) {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+
+      const streamResponse = await service.chat({ 
+        text, 
+        conversationHistory: messages.slice(0, -1), // History before current user message
+        model, 
+        stream: true 
+      });
+
+      let fullReply = "";
+      for await (const chunk of streamResponse) {
+        const content = chunk.choices[0]?.delta?.content || "";
+        if (content) {
+          fullReply += content;
+          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+        }
+      }
+
+      // 5. Save Assistant Message after stream ends
+      await repository.saveMessage(cid, "assistant", fullReply);
+      
+      // If it's a new conversation, generate a better title asynchronously
+      if (isNewConversation) {
+        service.generateTitle([{ role: "user", content: text }, { role: "assistant", content: fullReply }])
+          .then(title => repository.updateConversationTitle(cid, title))
+          .catch(err => console.error("Async title generation failed:", err));
+        
+        res.write(`data: ${JSON.stringify({ conversationId: cid, title: "..." })}\n\n`);
+      }
+
+      res.write("data: [DONE]\n\n");
+      res.end();
+    } else {
+      const reply = await service.chat({ 
+        text, 
+        conversationHistory: messages.slice(0, -1),
+        model, 
+        stream: false 
+      });
+
+      await repository.saveMessage(cid, "assistant", reply);
+
+      if (isNewConversation) {
+        const title = await service.generateTitle([{ role: "user", content: text }, { role: "assistant", content: reply }]);
+        await repository.updateConversationTitle(cid, title);
+        res.json({ code: "OK", data: { reply, conversationId: cid, title } });
+      } else {
+        res.json({ code: "OK", data: { reply, conversationId: cid } });
+      }
+    }
   } catch (error) {
     next(error);
   }
@@ -68,12 +135,10 @@ async function chat(req, res, next) {
 async function getConversationHistory(req, res, next) {
   try {
     const { conversationId } = req.params;
-    const { limit = 20 } = req.query;
 
     const history = await repository.getConversationHistory(
       req.auth.id,
-      conversationId,
-      parseInt(limit)
+      conversationId
     );
 
     res.json({ code: "OK", data: history });
@@ -84,7 +149,7 @@ async function getConversationHistory(req, res, next) {
 
 async function listConversations(req, res, next) {
   try {
-    const { limit = 10, offset = 0 } = req.query;
+    const { limit = 20, offset = 0 } = req.query;
 
     const conversations = await repository.getConversations(
       req.auth.id,
