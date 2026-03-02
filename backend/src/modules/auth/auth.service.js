@@ -85,27 +85,20 @@ async function logout({ jti }) {
 }
 
 async function guestToken({ ip, userAgent }) {
-  // Create a special guest user token with a unique identifier
-  // The sub field will be set to a negative number to identify as guest
-  const { token, jti, exp } = signAccessToken({ 
-    sub: "-1",
+  // 极简方案：直接签发一个指向 ID 为 1 的用户的令牌（用于演示）
+  // 这样访客就能看到并使用该用户的所有数据和功能
+  const demoUserId = 1; 
+  
+  const { token } = signAccessToken({ 
+    sub: String(demoUserId),
     isGuest: true 
   });
   
-  // Create session for guest token tracking
-  await repository.createSession({
-    userId: null, // No real user associated
-    jti,
-    tokenExpiresAt: unixToDateTime(exp),
-    ip,
-    userAgent,
-  });
-
   return { 
     token,
     user: {
-      id: -1,
-      username: "访客",
+      id: demoUserId,
+      username: "访客(演示模式)",
       email: null,
       isGuest: true
     }

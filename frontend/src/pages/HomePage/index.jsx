@@ -34,13 +34,28 @@ const HomePage = ({ isGuest }) => {
     if (isGuest && guestLoading) {
       (async () => {
         try {
-          const { data } = await httpClient.post("/auth/guest-token");
-          if (data && data.token) {
-            window.localStorage.setItem("auth_token", data.token);
+          console.log("正在为演示模式准备访客令牌...");
+          const response = await httpClient.post("/auth/guest-token");
+          
+          // 后端返回格式是 { code: "OK", data: { token: "...", ... } }
+          const resBody = response.data;
+          const token = resBody?.data?.token;
+
+          if (token) {
+            console.log("令牌获取成功，正在进入演示环境");
+            window.localStorage.setItem("auth_token", token);
+            // 延迟一小会儿确保存储生效，然后关闭加载态
+            setTimeout(() => {
+              setGuestLoading(false);
+              // 触发组件重新渲染
+              setRefreshKey(prev => prev + 1);
+            }, 500);
+          } else {
+            console.error("接口响应中未找到令牌:", resBody);
             setGuestLoading(false);
           }
         } catch (error) {
-          console.error("获取访客令牌失败:", error);
+          console.error("访客令牌初始化失败:", error);
           setGuestLoading(false);
         }
       })();
