@@ -8,11 +8,26 @@
   --text-muted: #64748B;
   --border-color: #F1F5F9;
   --sidebar-bg: #FFFFFF;
+  --header-height: 64px;
 }
 
 .home-layout {
   min-height: 100vh;
   background-color: var(--bg-color);
+}
+
+/* Header for Mobile */
+.mobile-header {
+  display: none;
+  height: var(--header-height);
+  background: #fff;
+  padding: 0 16px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 /* Sider Styling */
@@ -42,8 +57,8 @@
 .sider-menu .ant-menu-item {
   border-radius: 12px;
   margin: 4px 0;
-  height: 44px;
-  line-height: 44px;
+  height: 48px;
+  line-height: 48px;
   color: var(--text-muted);
 }
 
@@ -145,16 +160,12 @@
   background: #FFFFFF;
 }
 
-.message-bubble {
-  transition: transform 0.2s ease;
-}
-
-.message-bubble:hover {
-  transform: scale(1.01);
-}
-
 /* Mobile Adjustments */
 @media (max-width: 768px) {
+  .mobile-header {
+    display: flex;
+  }
+
   .main-content {
     padding: 24px 16px;
   }
@@ -162,8 +173,32 @@
   .user-greeting {
     font-size: 24px;
   }
+
+  .subtitle {
+    font-size: 14px;
+  }
   
   .feature-card {
     padding: 24px;
+    border-radius: 20px;
+  }
+
+  .icon-wrapper {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+
+  .feature-card:hover {
+    transform: none; /* Disable hover float on mobile */
+  }
+
+  /* Adjust fixed button position for bottom navigation/safe area */
+  .ai-toggle-btn {
+    bottom: 24px !important;
+    right: 20px !important;
+    width: 56px !important;
+    height: 56px !important;
   }
 }
