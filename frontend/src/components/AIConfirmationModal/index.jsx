@@ -21,33 +21,66 @@ const AIConfirmationModal = ({ open, onCancel, onConfirm, summary, updates, todo
 
   return (
     <Modal
-      title="确认 AI 批量操作"
+      title="确认批量操作"
       open={open}
       onCancel={onCancel}
       onOk={onConfirm}
-      okText="确认执行"
-      cancelText="取消"
+      okText="立即执行"
+      cancelText="稍后"
       destroyOnClose
+      centered
+      styles={{
+        mask: { backdropFilter: "blur(4px)" },
+        content: { borderRadius: 20, padding: 24 }
+      }}
     >
-      <div style={{ marginBottom: 16 }}>
-        <Text strong>AI 建议操作：</Text>
-        <div style={{ padding: 12, background: "#f5f7fa", borderRadius: 4, marginTop: 8 }}>
+      <div style={{ marginBottom: 24 }}>
+        <Text strong style={{ fontSize: 16, display: "block", marginBottom: 12 }}>AI 建议计划</Text>
+        <div style={{ 
+          padding: 16, 
+          background: "var(--bg-color, #F0F9FF)", 
+          borderRadius: 16, 
+          border: "1px solid var(--border-color, #E0F2FE)",
+          color: "var(--text-color, #0C4A6E)",
+          lineHeight: 1.6
+        }}>
           {summary}
         </div>
       </div>
 
       <List
-        size="small"
-        header={<Text type="secondary">变更详情：</Text>}
+        size="large"
         dataSource={updates}
+        split={false}
         renderItem={item => (
-          <List.Item>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {getStatusIcon(item.status)}
-              <Text>{getTodoTitle(item.id)}</Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                → {getStatusText(item.status)}
-              </Text>
+          <List.Item style={{ padding: "8px 0" }}>
+            <div style={{ 
+              display: "flex", 
+              alignItems: "center", 
+              gap: 12, 
+              background: "#fff", 
+              padding: "12px 16px", 
+              borderRadius: 12, 
+              width: "100%",
+              border: "1px solid #f0f0f0"
+            }}>
+              <div style={{ 
+                width: 32, 
+                height: 32, 
+                borderRadius: 8, 
+                background: item.status === "delete" ? "#FFF1F0" : (item.status === "completed" ? "#F6FFED" : "#FFFBE6"),
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}>
+                {getStatusIcon(item.status)}
+              </div>
+              <div style={{ flex: 1 }}>
+                <Text strong style={{ display: "block" }}>{getTodoTitle(item.id)}</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {getStatusText(item.status)}
+                </Text>
+              </div>
             </div>
           </List.Item>
         )}

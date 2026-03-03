@@ -68,7 +68,9 @@ async function executeBatchCommand(text, todos, conversationHistory = []) {
         
         要求：
         1. 返回 JSON：{"updates": [{"id":..., "status":...}], "summary": "..."}。
-        2. 不要包含解释。`
+        2. status 的取值范围【必须】是且仅限: "pending", "completed", "delete"。
+        3. 如果用户要求“删除”、“清空”、“移除”任务，status 必须设为 "delete"。
+        4. 不要包含任何解释。`
       },
       ...filteredHistory.slice(-3), 
       { role: "user", content: text }

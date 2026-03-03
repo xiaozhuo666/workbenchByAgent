@@ -26,13 +26,19 @@ async function deleteTodo(id, userId) {
 async function batchUpdateStatus(userId, updates) {
   // updates is an array of {id, status}
   // status can be 'pending', 'completed', or 'delete'
+  console.log(`Processing batch update for user ${userId}:`, JSON.stringify(updates));
+  
   for (const update of updates) {
     const todo = await repository.findByIdAndUserId(update.id, userId);
     if (todo) {
-      if (update.status === 'delete') {
+      const normalizedStatus = String(update.status).toLowerCase().trim();
+      
+      if (normalizedStatus === 'delete' || normalizedStatus === 'remove') {
         await repository.remove(update.id, userId);
+      } else if (normalizedStatus === 'completed' || normalizedStatus === 'pending') {
+        await repository.updateStatus(update.id, userId, normalizedStatus);
       } else {
-        await repository.updateStatus(update.id, userId, update.status);
+        console.warn(`Invalid status received in batch update: ${update.status} for todo ${update.id}`);
       }
     }
   }

@@ -128,7 +128,7 @@ QQ_MAIL_AUTH_CODE=你的QQ邮箱授权码
 
 ```bash
 cd /opt/ai_project
-docker compose --env-file .env.docker up -d --build
+docker compose --env-file .env.docker up -d --build  //代码更新执行
 docker compose ps
 ```
 

@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { Layout, Menu, Avatar, Typography, Button, Tooltip, Spin } from "antd";
+import { Layout, Menu, Avatar, Typography, Button, Tooltip, Spin, Card, Row, Col, Space } from "antd";
 import {
-  MessageOutlined,
   UnorderedListOutlined,
   CalendarOutlined,
-  RedditOutlined,
+  ThunderboltOutlined,
   UserOutlined,
   LogoutOutlined,
   LoginOutlined,
+  MailOutlined,
+  CloudOutlined,
+  CarOutlined,
+  ShoppingOutlined,
+  RightOutlined
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { getUser, doLogout } from "../../services/authStore";
@@ -18,44 +22,46 @@ import AISidebar from "../../components/AISidebar";
 import "./index.css";
 
 const { Sider, Content } = Layout;
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 const HomePage = ({ isGuest }) => {
   const [collapsed, setCollapsed] = useState(false);
-  const [showAISidebar, setShowAISidebar] = useState(true);
-  const [activeTab, setActiveTab] = useState("sessions");
+  const [showAISidebar, setShowAISidebar] = useState(window.innerWidth > 1200);
+  const [activeTab, setActiveTab] = useState("home");
   const [refreshKey, setRefreshKey] = useState(0);
   const [guestLoading, setGuestLoading] = useState(isGuest);
   const user = isGuest ? { username: "访客" } : getUser();
   const navigate = useNavigate();
 
-  // 访客模式下自动获取临时令牌
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1200) {
+        setShowAISidebar(false);
+      } else {
+        setShowAISidebar(true);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   useEffect(() => {
     if (isGuest && guestLoading) {
       (async () => {
         try {
-          console.log("正在为演示模式准备访客令牌...");
           const response = await httpClient.post("/auth/guest-token");
-          
-          // 后端返回格式是 { code: "OK", data: { token: "...", ... } }
           const resBody = response.data;
           const token = resBody?.data?.token;
-
           if (token) {
-            console.log("令牌获取成功，正在进入演示环境");
             window.localStorage.setItem("auth_token", token);
-            // 延迟一小会儿确保存储生效，然后关闭加载态
             setTimeout(() => {
               setGuestLoading(false);
-              // 触发组件重新渲染
               setRefreshKey(prev => prev + 1);
             }, 500);
           } else {
-            console.error("接口响应中未找到令牌:", resBody);
             setGuestLoading(false);
           }
         } catch (error) {
-          console.error("访客令牌初始化失败:", error);
           setGuestLoading(false);
         }
       })();
@@ -73,19 +79,24 @@ const HomePage = ({ isGuest }) => {
 
   const menuItems = [
     {
-      key: "sessions",
-      icon: <MessageOutlined />,
-      label: "会话中心",
+      key: "home",
+      icon: <ThunderboltOutlined />,
+      label: "首页看板",
     },
     {
       key: "todos",
       icon: <UnorderedListOutlined />,
-      label: "待办事项",
+      label: "待办清单",
     },
     {
       key: "schedules",
       icon: <CalendarOutlined />,
-      label: "日程管理",
+      label: "日程计划",
+    },
+    {
+      key: "email",
+      icon: <MailOutlined />,
+      label: "邮件助手",
     },
   ];
 
@@ -93,27 +104,128 @@ const HomePage = ({ isGuest }) => {
     setActiveTab(key);
   };
 
-  const handleDraftSaved = () => {
-    setRefreshKey(prev => prev + 1);
-  };
+  const FeatureCard = ({ icon, title, desc, onClick, color, bgColor }) => (
+    <div className="feature-card" onClick={onClick}>
+      <div className="icon-wrapper" style={{ backgroundColor: bgColor, color: color }}>
+        {icon}
+      </div>
+      <div className="card-title">{title}</div>
+      <div className="card-desc">{desc}</div>
+      <div style={{ marginTop: 'auto', paddingTop: 16 }}>
+        <Button type="text" size="small" style={{ padding: 0, color: color }}>
+          立即开启 <RightOutlined style={{ fontSize: 10 }} />
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderWelcome = () => (
+    <div className="welcome-section">
+      <div style={{ marginBottom: 40 }}>
+        <h1 className="user-greeting">你好，{user?.username} 👋</h1>
+        <p className="subtitle">我是你的个人生活助手，今天准备做些什么？</p>
+      </div>
+
+      <Row gutter={[24, 24]} className="feature-grid">
+        <Col xs={24} sm={12} lg={8}>
+          <FeatureCard 
+            icon={<CloudOutlined />} 
+            title="实时天气" 
+            desc="获取今日及本周精准天气预测与穿衣建议"
+            onClick={() => setActiveTab("home")}
+            color="#0EA5E9"
+            bgColor="#E0F2FE"
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={8}>
+          <FeatureCard 
+            icon={<CarOutlined />} 
+            title="出行票务" 
+            desc="查询高铁、航班动态，智能规划最优行程"
+            onClick={() => setActiveTab("home")}
+            color="#6366F1"
+            bgColor="#EEF2FF"
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={8}>
+          <FeatureCard 
+            icon={<ShoppingOutlined />} 
+            title="精选外卖" 
+            desc="基于口味偏好为您推荐附近最高评分美食"
+            onClick={() => setActiveTab("home")}
+            color="#F59E0B"
+            bgColor="#FFFBEB"
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={8}>
+          <FeatureCard 
+            icon={<UnorderedListOutlined />} 
+            title="待办管理" 
+            desc="整理并追踪所有任务，让工作生活井井有条"
+            onClick={() => setActiveTab("todos")}
+            color="#10B981"
+            bgColor="#ECFDF5"
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={8}>
+          <FeatureCard 
+            icon={<CalendarOutlined />} 
+            title="重要日程" 
+            desc="设置会议与纪念日提醒，从此不再错过关键时刻"
+            onClick={() => setActiveTab("schedules")}
+            color="#EC4899"
+            bgColor="#FDF2F8"
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={8}>
+          <FeatureCard 
+            icon={<MailOutlined />} 
+            title="智能邮件" 
+            desc="通过自然语言极速处理 QQ 邮箱，高效沟通"
+            onClick={() => setActiveTab("email")}
+            color="#8B5CF6"
+            bgColor="#F5F3FF"
+          />
+        </Col>
+      </Row>
+    </div>
+  );
 
   const renderContent = () => {
     if (guestLoading) {
-      return <Spin style={{ marginTop: 120, width: "100%" }} tip="初始化访客环境中..." />;
+      return (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+          <Spin size="large" tip="正在为您开启生活助手空间..." />
+        </div>
+      );
     }
     switch (activeTab) {
       case "todos":
         return <TodoList key={refreshKey} />;
       case "schedules":
         return <ScheduleList key={refreshKey} />;
-      case "sessions":
-      default:
+      case "email":
         return (
-          <div style={{ textAlign: "center", marginTop: 100 }}>
-            <Title level={4}>欢迎回来，{user?.username}</Title>
-            <Text type="secondary">会话中心正在建设中，请尝试侧边栏的 待办事项 或 日程管理</Text>
+          <div style={{ textAlign: "center", padding: "80px 20px" }}>
+            <div style={{ 
+              width: 80, height: 80, borderRadius: 24, background: '#F5F3FF', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              margin: '0 auto 24px', color: '#8B5CF6', fontSize: 32 
+            }}>
+              <MailOutlined />
+            </div>
+            <Title level={3}>智能邮件集成中</Title>
+            <Paragraph type="secondary" style={{ maxWidth: 400, margin: '0 auto 32px' }}>
+              我们正在为您打通 QQ 邮箱的极速通道，很快您就可以通过 AI 助手直接发送邮件了。
+            </Paragraph>
+            <Button type="primary" size="large" onClick={() => setActiveTab("home")} shape="round">
+              返回看板
+            </Button>
           </div>
         );
+      case "home":
+      default:
+        return renderWelcome();
     }
   };
 
@@ -125,10 +237,13 @@ const HomePage = ({ isGuest }) => {
         onCollapse={(value) => setCollapsed(value)}
         theme="light"
         className="sider-content"
-        width={220}
+        width={260}
+        breakpoint="lg"
+        collapsedWidth={window.innerWidth < 768 ? 0 : 80}
       >
         <div className="logo-container">
-          {!collapsed && "智能工作台"}
+          <ThunderboltOutlined style={{ marginRight: collapsed ? 0 : 12, fontSize: 24 }} />
+          {!collapsed && "个人生活助手"}
         </div>
         <Menu
           mode="inline"
@@ -139,10 +254,16 @@ const HomePage = ({ isGuest }) => {
         />
         <div className="user-info-footer">
           <div style={{ display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between" }}>
-            <Avatar icon={<UserOutlined />} size={collapsed ? "small" : "default"} />
+            <Avatar 
+              src={user?.avatar}
+              icon={<UserOutlined />} 
+              size={collapsed ? "small" : "default"} 
+              style={{ backgroundColor: "var(--primary-color)" }}
+            />
             {!collapsed && (
-              <div style={{ marginLeft: 8, flex: 1, overflow: "hidden" }}>
-                <Text ellipsis strong block>{user?.username}</Text>
+              <div style={{ marginLeft: 12, flex: 1, overflow: "hidden" }}>
+                <Text ellipsis strong block style={{ color: "var(--text-main)" }}>{user?.username}</Text>
+                <Text type="secondary" style={{ fontSize: 11 }}>生活管理中</Text>
               </div>
             )}
             {!collapsed && (
@@ -152,31 +273,39 @@ const HomePage = ({ isGuest }) => {
                   icon={isGuest ? <LoginOutlined /> : <LogoutOutlined />}
                   onClick={handleLogout}
                   size="small"
+                  style={{ color: "var(--text-muted)" }}
                 />
               </Tooltip>
             )}
           </div>
         </div>
       </Sider>
-      <Layout>
-        <Content className="main-content" style={{ position: "relative" }}>
-          {renderContent()}
+      
+      <Layout style={{ backgroundColor: "transparent" }}>
+        <Content style={{ position: 'relative', overflowY: 'auto' }}>
+          <div className="main-content">
+            {renderContent()}
+          </div>
 
-          {/* AI Toggle Button */}
-          <Tooltip title="AI 助手">
+          <Tooltip title={showAISidebar ? "隐藏助手" : "唤起 AI 助手"}>
             <Button
               type="primary"
               shape="circle"
-              icon={<RedditOutlined style={{ fontSize: 24 }} />}
+              icon={<ThunderboltOutlined style={{ fontSize: 24 }} />}
               style={{
                 position: "fixed",
-                right: showAISidebar ? 444 : 24,
-                bottom: 24,
-                width: 56,
-                height: 56,
-                boxShadow: "0 6px 16px rgba(22, 119, 255, 0.4)",
+                right: showAISidebar ? 444 : 32,
+                bottom: 32,
+                width: 60,
+                height: 64,
+                boxShadow: "0 12px 24px -6px rgba(14, 165, 233, 0.5)",
                 zIndex: 1000,
-                transition: "right 0.3s ease",
+                transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "none",
+                background: "linear-gradient(135deg, #0EA5E9 0%, #2563EB 100%)"
               }}
               onClick={() => setShowAISidebar(!showAISidebar)}
             />
@@ -184,7 +313,6 @@ const HomePage = ({ isGuest }) => {
         </Content>
       </Layout>
 
-      {/* AISidebar */}
       {showAISidebar && (
         <Sider
           width={420}
@@ -196,16 +324,37 @@ const HomePage = ({ isGuest }) => {
             right: 0,
             top: 0,
             zIndex: 1001,
-            boxShadow: "-4px 0 12px rgba(0,0,0,0.05)",
+            boxShadow: "-10px 0 30px rgba(0,0,0,0.03)",
           }}
+          className="ai-sider"
         >
           <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-            <div style={{ padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-color)" }}>
-              <Title level={5} style={{ margin: 0 }}>AI 助手</Title>
-              <Button type="text" onClick={() => setShowAISidebar(false)}>关闭</Button>
+            <div style={{ 
+              padding: "20px 24px", 
+              display: "flex", 
+              justifyContent: "space-between", 
+              alignItems: "center", 
+              borderBottom: "1px solid var(--border-color)",
+              background: "#fff"
+            }}>
+              <Space>
+                <div style={{ 
+                  width: 32, 
+                  height: 32, 
+                  borderRadius: 10, 
+                  background: "linear-gradient(135deg, #0EA5E9 0%, #2563EB 100%)", 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "center" 
+                }}>
+                  <ThunderboltOutlined style={{ color: "#fff", fontSize: 16 }} />
+                </div>
+                <Title level={5} style={{ margin: 0, fontWeight: 700 }}>AI 助手</Title>
+              </Space>
+              <Button type="text" onClick={() => setShowAISidebar(false)} icon={<RightOutlined />} />
             </div>
             <div style={{ flex: 1, overflow: "hidden" }}>
-              <AISidebar onDraftSaved={handleDraftSaved} />
+              <AISidebar onDraftSaved={() => setRefreshKey(prev => prev + 1)} />
             </div>
           </div>
         </Sider>
