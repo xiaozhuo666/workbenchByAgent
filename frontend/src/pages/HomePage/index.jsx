@@ -21,17 +21,18 @@ import httpClient from "../../api/httpClient";
 import TodoList from "../../components/TodoList";
 import ScheduleList from "../../components/ScheduleList";
 import AISidebar from "../../components/AISidebar";
+import McpTogglePage from "../McpTogglePage";
 import "./index.css";
 
 const { Sider, Content, Header } = Layout;
 const { Title, Text, Paragraph } = Typography;
 
-const HomePage = ({ isGuest }) => {
+const HomePage = ({ isGuest, initialTab = "home" }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [showAISidebar, setShowAISidebar] = useState(window.innerWidth > 1200);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("home");
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [refreshKey, setRefreshKey] = useState(0);
   const [guestLoading, setGuestLoading] = useState(isGuest);
   const user = isGuest ? { username: "访客" } : getUser();
@@ -50,6 +51,10 @@ const HomePage = ({ isGuest }) => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    setActiveTab(initialTab || "home");
+  }, [initialTab]);
 
   useEffect(() => {
     if (isGuest && guestLoading) {
@@ -108,6 +113,11 @@ const HomePage = ({ isGuest }) => {
       key: "email",
       icon: <MailOutlined />,
       label: "邮件助手",
+    },
+    {
+      key: "mcp",
+      icon: <ThunderboltOutlined />,
+      label: "MCP 开关",
     },
   ];
 
@@ -230,6 +240,8 @@ const HomePage = ({ isGuest }) => {
             </Button>
           </div>
         );
+      case "mcp":
+        return <McpTogglePage embedded />;
       case "home":
       default:
         return renderWelcome();

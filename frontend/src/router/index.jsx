@@ -40,6 +40,14 @@ function AppRouter() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/mcp-tools"
+          element={
+            <ProtectedRoute>
+              <HomePage initialTab="mcp" />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/guest" element={<HomePage isGuest={true} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
