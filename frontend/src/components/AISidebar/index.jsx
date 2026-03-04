@@ -288,20 +288,20 @@ const AISidebar = ({ onDraftSaved }) => {
           <div key={index} style={{ marginBottom: 20, textAlign: msg.role === "user" ? "right" : "left" }}>
             <Space direction="vertical" style={{ maxWidth: "90%", textAlign: "left" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", gap: 8, marginBottom: 4 }}>
-                {msg.role === "assistant" && <Avatar size="small" icon={<RobotOutlined />} style={{ background: "#1677ff" }} />}
+                {msg.role === "assistant" && <Avatar size="small" icon={<RobotOutlined />} style={{ background: "var(--primary-color, #0EA5E9)" }} />}
                 <Text type="secondary" style={{ fontSize: 12 }}>{msg.role === "user" ? "你" : "AI 助手"}</Text>
-                {msg.role === "user" && <Avatar size="small" icon={<UserOutlined />} />}
+                {msg.role === "user" && <Avatar size="small" icon={<UserOutlined />} style={{ background: "#8c8c8c" }} />}
               </div>
               
               <Card 
                 size="small" 
                 hoverable={msg.role === "assistant"}
                 style={{ 
-                  borderRadius: 12, 
-                  background: msg.role === "user" ? "#1677ff" : "#fff",
-                  color: msg.role === "user" ? "#fff" : "rgba(0,0,0,0.85)",
-                  border: msg.role === "user" ? "none" : "1px solid #e8e8e8",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
+                  borderRadius: msg.role === "user" ? "16px 4px 16px 16px" : "4px 16px 16px 16px", 
+                  background: msg.role === "user" ? "linear-gradient(135deg, #0EA5E9 0%, #2563EB 100%)" : "#fff",
+                  color: msg.role === "user" ? "#fff" : "var(--text-main)",
+                  border: msg.role === "user" ? "none" : "1px solid #F1F5F9",
+                  boxShadow: msg.role === "user" ? "0 4px 12px rgba(14, 165, 233, 0.2)" : "0 2px 8px rgba(0,0,0,0.02)"
                 }}
                 className="message-bubble"
               >
