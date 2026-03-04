@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "test:mcp": "jest --runInBand tests/unit/ai tests/integration/ai tests/contract/ai"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

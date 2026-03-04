@@ -1,0 +1,88 @@
+openapi: 3.0.3
+info:
+  title: AI Chat MCP Compatibility Contract
+  version: 1.0.0
+  description: |
+    定义 /api/ai/chat 在 MCP 框架接入后的兼容契约。
+    要求：不改变现有外部 API 结构，仅在内部增加工具调用链与降级路径。
+paths:
+  /api/ai/chat:
+    post:
+      summary: AI 聊天（兼容 MCP 工具编排）
+      description: |
+        当 MCP 开关关闭时，行为与历史版本一致。
+        当开关开启时，可能触发内部工具调用循环，但响应结构保持兼容。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                conversationId:
+                  type: string
+                model:
+                  type: string
+                  default: qwen-plus
+                stream:
+                  type: boolean
+                  default: false
+      responses:
+        "200":
+          description: 聊天成功（含工具增强或降级结果）
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - data
+                properties:
+                  code:
+                    type: string
+                    example: OK
+                  data:
+                    type: object
+                    properties:
+                      reply:
+                        type: string
+                      conversationId:
+                        type: string
+                      title:
+                        type: string
+                        description: 新会话时可返回
+              examples:
+                normal_reply:
+                  summary: 非流式回复
+                  value:
+                    code: OK
+                    data:
+                      reply: "这是回复内容"
+                      conversationId: "4f8f0e24-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+        "4XX":
+          description: 参数错误或鉴权失败
+        "5XX":
+          description: 服务内部错误（目标是通过降级尽量避免）
+components:
+  schemas:
+    ToolExecutionLogRecord:
+      type: object
+      description: 内部日志结构，不直接暴露给前端
+      properties:
+        conversationId:
+          type: string
+        toolName:
+          type: string
+        argsSummary:
+          type: string
+        durationMs:
+          type: integer
+        status:
+          type: string
+          enum: [success, failed, timeout, rejected]
+        errorMessage:
+          type: string

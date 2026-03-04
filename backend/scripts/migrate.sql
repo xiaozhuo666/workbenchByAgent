@@ -76,3 +76,57 @@ CREATE TABLE IF NOT EXISTS ai_conversations (
   KEY idx_ai_conversations_created_at (created_at),
   CONSTRAINT fk_ai_conversations_user FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+CREATE TABLE IF NOT EXISTS ai_mcp_tool_logs (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  conversation_id VARCHAR(64) NOT NULL,
+  user_id BIGINT NULL,
+  round_index INT NOT NULL DEFAULT 1,
+  tool_name VARCHAR(128) NOT NULL,
+  args_summary TEXT NULL,
+  status ENUM('success', 'failed', 'timeout', 'rejected') NOT NULL,
+  duration_ms INT NOT NULL DEFAULT 0,
+  error_message TEXT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_ai_mcp_tool_logs_conversation_id (conversation_id),
+  KEY idx_ai_mcp_tool_logs_tool_name (tool_name)
+);
+
+CREATE TABLE IF NOT EXISTS ai_mcp_tool_traces (
+  conversation_id VARCHAR(64) PRIMARY KEY,
+  total_calls INT NOT NULL DEFAULT 0,
+  success_calls INT NOT NULL DEFAULT 0,
+  failed_calls INT NOT NULL DEFAULT 0,
+  fallback_triggered TINYINT NOT NULL DEFAULT 0,
+  final_response_type ENUM('tool_enhanced', 'model_only') NOT NULL DEFAULT 'model_only',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ai_mcp_tool_toggles (
+  tool_name VARCHAR(128) PRIMARY KEY,
+  enabled TINYINT NOT NULL DEFAULT 1,
+  updated_by BIGINT NULL,
+  reason VARCHAR(255) NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ai_mcp_toggle_audits (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  tool_name VARCHAR(128) NOT NULL,
+  before_enabled TINYINT NOT NULL,
+  after_enabled TINYINT NOT NULL,
+  operator_id BIGINT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_ai_mcp_toggle_audits_tool_name (tool_name)
+);
+
+INSERT INTO users (username, email, password_hash, status)
+VALUES (
+  'system',
+  'system@local',
+  '$2b$10$NA5i31JSWMPk9Tpm2gHZHOT3zJ4kTuQaHe3o6T2b08S0v6vqNP96i',
+  1
+)
+ON DUPLICATE KEY UPDATE
+password_hash = VALUES(password_hash),
+status = 1;

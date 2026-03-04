@@ -147,6 +147,71 @@ async function getConversation(userId, conversationId) {
   }
 }
 
+async function logToolExecution({
+  conversationId,
+  userId,
+  roundIndex,
+  toolName,
+  argsSummary,
+  status,
+  durationMs,
+  errorMessage,
+}) {
+  try {
+    await pool.query(
+      `INSERT INTO ai_mcp_tool_logs
+      (conversation_id, user_id, round_index, tool_name, args_summary, status, duration_ms, error_message)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        conversationId || null,
+        userId || null,
+        roundIndex || 1,
+        toolName || null,
+        argsSummary || null,
+        status || null,
+        durationMs || 0,
+        errorMessage || null,
+      ]
+    );
+  } catch (err) {
+    console.error("Failed to log MCP tool execution:", err);
+  }
+}
+
+async function logToolTrace({
+  conversationId,
+  totalCalls,
+  successCalls,
+  failedCalls,
+  fallbackTriggered,
+  finalResponseType,
+}) {
+  try {
+    await pool.query(
+      `INSERT INTO ai_mcp_tool_traces
+      (conversation_id, total_calls, success_calls, failed_calls, fallback_triggered, final_response_type)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+      total_calls = VALUES(total_calls),
+      success_calls = VALUES(success_calls),
+      failed_calls = VALUES(failed_calls),
+      fallback_triggered = VALUES(fallback_triggered),
+      final_response_type = VALUES(final_response_type),
+      updated_at = CURRENT_TIMESTAMP`,
+      [
+        conversationId || null,
+        totalCalls || 0,
+        successCalls || 0,
+        failedCalls || 0,
+        fallbackTriggered ? 1 : 0,
+        finalResponseType || "model_only",
+      ]
+    );
+  } catch (err) {
+    console.error("Failed to log MCP trace:", err);
+  }
+}
+
 module.exports = {
   logCommand,
   createConversation,
@@ -156,4 +221,6 @@ module.exports = {
   getConversations,
   deleteConversation,
   getConversation,
+  logToolExecution,
+  logToolTrace,
 };

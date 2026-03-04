@@ -14,6 +14,10 @@ Auto-generated from all feature plans. Last updated: 2026-03-01
 - MySQL (Tables: `todos`, `schedules`, `ai_command_logs`) (002-schedule-todo-management)
 - Node.js 20 LTS, JavaScript (ES6+), React 19 + Express, antd, Less, openai (DashScope SDK), mysql2, jsonwebtoken, cors, dotenv (004-ai-adv-convo)
 - MySQL (Tables: `ai_conversations`, `ai_messages`) (004-ai-adv-convo)
+- Node.js 20 LTS, JavaScript (CommonJS) + Express 5, openai (DashScope 兼容模式), mysql2, jsonwebtoken, dotenv (001-mcp-tool-framework)
+- MySQL 8.x（现有 `ai_conversations`、`ai_messages`，新增/扩展工具调用日志表） (001-mcp-tool-framework)
+- Node.js 20 LTS、JavaScript (CommonJS)、React 19 + Express 5、openai (DashScope)、mysql2、jsonwebtoken、dotenv、antd、less (001-mcp-tool-framework)
+- MySQL 8.x（会话消息 + 工具调用日志 + 工具开关状态） (001-mcp-tool-framework)
 
 - JavaScript (Node.js 20 LTS), SQL (MySQL 8.x), TypeScript 可选（后续迭代） + Express, mysql2, bcrypt, jsonwebtoken, cors, dotenv, React, React Router, antd, less (001-auth-login-register)
 
@@ -34,9 +38,9 @@ npm test; npm run lint
 JavaScript (Node.js 20 LTS), SQL (MySQL 8.x), TypeScript 可选（后续迭代）: Follow standard conventions
 
 ## Recent Changes
+- 001-mcp-tool-framework: Added Node.js 20 LTS、JavaScript (CommonJS)、React 19 + Express 5、openai (DashScope)、mysql2、jsonwebtoken、dotenv、antd、less
+- 001-mcp-tool-framework: Added Node.js 20 LTS, JavaScript (CommonJS) + Express 5, openai (DashScope 兼容模式), mysql2, jsonwebtoken, dotenv
 - 004-ai-adv-convo: Added Node.js 20 LTS, JavaScript (ES6+), React 19 + Express, antd, Less, openai (DashScope SDK), mysql2, jsonwebtoken, cors, dotenv
-- 002-schedule-todo-management: Added Node.js 20 LTS, JavaScript (ES6+), React 19 + Express, antd, Less, openai (DashScope), mysql2, jsonwebtoken, cors, dotenv
-- 002-schedule-todo-management: Added [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
 
 
 <!-- MANUAL ADDITIONS START -->

@@ -17,6 +17,22 @@ const env = {
   corsOrigin: process.env.CORS_ORIGIN 
     ? process.env.CORS_ORIGIN.split(",") 
     : ["http://localhost:3000", "http://127.0.0.1:3000"],
+  mcp: {
+    enabled: String(process.env.MCP_ENABLED || "false").toLowerCase() === "true",
+    toolWhitelist: (process.env.MCP_TOOL_WHITELIST || "tool.mock.query")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+    maxCallRounds: Number(process.env.MCP_MAX_CALL_ROUNDS || 3),
+    toolTimeoutMs: Number(process.env.MCP_TOOL_TIMEOUT_MS || 3000),
+    toolMaxRetries: Number(process.env.MCP_TOOL_MAX_RETRIES || 1),
+    retryBackoffMs: Number(process.env.MCP_RETRY_BACKOFF_MS || 200),
+    toggleCacheTtlMs: Number(process.env.MCP_TOGGLE_CACHE_TTL_MS || 3000),
+    adminUserIds: (process.env.MCP_ADMIN_USER_IDS || "1")
+      .split(",")
+      .map((item) => Number(item.trim()))
+      .filter((item) => Number.isFinite(item)),
+  },
 };
 
 module.exports = env;

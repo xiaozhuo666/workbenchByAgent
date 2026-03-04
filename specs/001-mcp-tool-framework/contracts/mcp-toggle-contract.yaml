@@ -1,0 +1,89 @@
+openapi: 3.0.3
+info:
+  title: MCP Toggle Management Contract
+  version: 1.0.0
+  description: 最小 MCP 开关管理接口契约（管理员使用）。
+paths:
+  /api/ai/mcp/tools:
+    get:
+      summary: 获取 MCP 工具开关列表
+      responses:
+        "200":
+          description: 成功返回工具列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, data]
+                properties:
+                  code:
+                    type: string
+                    example: OK
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        toolName:
+                          type: string
+                        displayName:
+                          type: string
+                        enabled:
+                          type: boolean
+                        riskLevel:
+                          type: string
+        "401":
+          description: 未登录
+        "403":
+          description: 非管理员
+  /api/ai/mcp/tools/{toolName}/toggle:
+    patch:
+      summary: 更新指定 MCP 工具开关
+      parameters:
+        - in: path
+          name: toolName
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled:
+                  type: boolean
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, data]
+                properties:
+                  code:
+                    type: string
+                    example: OK
+                  data:
+                    type: object
+                    properties:
+                      toolName:
+                        type: string
+                      enabled:
+                        type: boolean
+                      updatedAt:
+                        type: string
+                        format: date-time
+        "400":
+          description: 参数错误
+        "401":
+          description: 未登录
+        "403":
+          description: 非管理员
+        "404":
+          description: 工具不存在

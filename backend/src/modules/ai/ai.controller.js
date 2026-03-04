@@ -1,6 +1,9 @@
 const service = require("./ai.service");
 const repository = require("./ai.repository");
 const { v4: uuidv4 } = require("uuid");
+const env = require("../../config/env");
+const { appError } = require("../../middleware/errorHandler");
+const authRepository = require("../auth/auth.repository");
 
 async function ensureConversation(userId, conversationId, firstText, model) {
   let cid = conversationId;
@@ -150,19 +153,38 @@ async function chat(req, res, next) {
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
 
-      const streamResponse = await service.chat({ 
-        text, 
-        conversationHistory: messages.slice(0, -1),
-        model, 
-        stream: true 
-      });
-
       let fullReply = "";
-      for await (const chunk of streamResponse) {
-        const content = chunk.choices[0]?.delta?.content || "";
-        if (content) {
-          fullReply += content;
-          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+
+      if (env.mcp.enabled) {
+        const { reply } = await service.chatWithMcp({
+          text,
+          conversationHistory: messages.slice(0, -1),
+          model,
+          stream: false,
+          conversationId: cid,
+          userId: req.auth.id,
+        });
+        fullReply = reply || "";
+        const chunkSize = 24;
+        for (let i = 0; i < fullReply.length; i += chunkSize) {
+          const part = fullReply.slice(i, i + chunkSize);
+          if (part) {
+            res.write(`data: ${JSON.stringify({ content: part })}\n\n`);
+          }
+        }
+      } else {
+        const streamResponse = await service.chat({
+          text,
+          conversationHistory: messages.slice(0, -1),
+          model,
+          stream: true,
+        });
+        for await (const chunk of streamResponse) {
+          const content = chunk.choices[0]?.delta?.content || "";
+          if (content) {
+            fullReply += content;
+            res.write(`data: ${JSON.stringify({ content })}\n\n`);
+          }
         }
       }
 
@@ -181,11 +203,13 @@ async function chat(req, res, next) {
       res.write("data: [DONE]\n\n");
       res.end();
     } else {
-      const reply = await service.chat({ 
+      const { reply } = await service.chatWithMcp({ 
         text, 
         conversationHistory: messages.slice(0, -1),
         model, 
-        stream: false 
+        stream: false,
+        conversationId: cid,
+        userId: req.auth.id,
       });
 
       await repository.saveMessage(cid, "assistant", reply);
@@ -198,6 +222,55 @@ async function chat(req, res, next) {
         res.json({ code: "OK", data: { reply, conversationId: cid } });
       }
     }
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function ensureAdmin(req) {
+  const userId = Number(req.auth?.id);
+  let allow = env.mcp.adminUserIds.includes(userId);
+  if (!allow) {
+    const user = await authRepository.findById(userId);
+    allow = user?.username === "system";
+  }
+  if (!allow) {
+    throw appError("AUTH_FORBIDDEN", "仅管理员可操作 MCP 开关", 403);
+  }
+}
+
+async function listMcpTools(req, res, next) {
+  try {
+    await ensureAdmin(req);
+    const tools = await service.listMcpTools();
+    res.json({ code: "OK", data: tools });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function toggleMcpTool(req, res, next) {
+  try {
+    await ensureAdmin(req);
+    const { toolName } = req.params;
+    const { enabled, reason } = req.body || {};
+    if (typeof enabled !== "boolean") {
+      throw appError("INVALID_PARAMS", "enabled 必须是布尔值", 400);
+    }
+    const tool = await service.updateMcpToolToggle({
+      toolName,
+      enabled,
+      operatorId: req.auth.id,
+      reason: reason || null,
+    });
+    res.json({
+      code: "OK",
+      data: {
+        toolName: tool.toolName,
+        enabled: Boolean(tool.enabled),
+        updatedAt: new Date().toISOString(),
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -253,4 +326,6 @@ module.exports = {
   getConversationHistory,
   listConversations,
   deleteConversation,
+  listMcpTools,
+  toggleMcpTool,
 };
