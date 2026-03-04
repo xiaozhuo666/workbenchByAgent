@@ -153,19 +153,38 @@ async function chat(req, res, next) {
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
 
-      const streamResponse = await service.chat({ 
-        text, 
-        conversationHistory: messages.slice(0, -1),
-        model, 
-        stream: true 
-      });
-
       let fullReply = "";
-      for await (const chunk of streamResponse) {
-        const content = chunk.choices[0]?.delta?.content || "";
-        if (content) {
-          fullReply += content;
-          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+
+      if (env.mcp.enabled) {
+        const { reply } = await service.chatWithMcp({
+          text,
+          conversationHistory: messages.slice(0, -1),
+          model,
+          stream: false,
+          conversationId: cid,
+          userId: req.auth.id,
+        });
+        fullReply = reply || "";
+        const chunkSize = 24;
+        for (let i = 0; i < fullReply.length; i += chunkSize) {
+          const part = fullReply.slice(i, i + chunkSize);
+          if (part) {
+            res.write(`data: ${JSON.stringify({ content: part })}\n\n`);
+          }
+        }
+      } else {
+        const streamResponse = await service.chat({
+          text,
+          conversationHistory: messages.slice(0, -1),
+          model,
+          stream: true,
+        });
+        for await (const chunk of streamResponse) {
+          const content = chunk.choices[0]?.delta?.content || "";
+          if (content) {
+            fullReply += content;
+            res.write(`data: ${JSON.stringify({ content })}\n\n`);
+          }
         }
       }
 
