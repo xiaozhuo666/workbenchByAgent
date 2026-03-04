@@ -1,14 +1,11 @@
 const { getMcpConfig } = require("../../../config/mcp");
 const { TOOL_ERROR_CODES, ToolExecutionError } = require("./tool.errors");
-const { buildDefaultTools } = require("./defaultTools");
-const { normalizeWhitelist, isToolWhitelisted, isReadOnlyTool } = require("./whitelist");
+const mcpManager = require("./mcpServerManager");
+const { normalizeWhitelist, isToolWhitelisted } = require("./whitelist");
 const toggleRepository = require("./toggle.repository");
 
 let cacheExpiresAt = 0;
 let toggleCacheMap = new Map();
-
-const toolMap = new Map();
-buildDefaultTools().forEach((tool) => toolMap.set(tool.toolName, tool));
 
 async function refreshToggleCacheIfNeeded() {
   const now = Date.now();
@@ -21,74 +18,68 @@ async function refreshToggleCacheIfNeeded() {
   cacheExpiresAt = now + Math.max(toggleCacheTtlMs, 500);
 }
 
+/**
+ * 获取所有可用工具（包含动态发现的 MCP 工具）
+ */
 async function listTools() {
   await refreshToggleCacheIfNeeded();
-  return Array.from(toolMap.values()).map((tool) => ({
-    toolName: tool.toolName,
-    displayName: tool.displayName,
-    description: tool.description,
-    riskLevel: tool.riskLevel,
-    capabilityType: tool.capabilityType,
-    enabled: toggleCacheMap.has(tool.toolName)
-      ? toggleCacheMap.get(tool.toolName)
-      : Boolean(tool.enabled),
-  }));
-}
-
-async function getTool(toolName) {
-  await refreshToggleCacheIfNeeded();
-  const tool = toolMap.get(toolName);
-  if (!tool) return null;
-  return {
-    ...tool,
-    enabled: toggleCacheMap.has(toolName) ? toggleCacheMap.get(toolName) : Boolean(tool.enabled),
-  };
+  const allTools = mcpManager.getOpenAiTools();
+  
+  return allTools.map((t) => {
+    const toolName = t.function.name;
+    const isEnabled = toggleCacheMap.has(toolName) ? toggleCacheMap.get(toolName) : true;
+    
+    return {
+      toolName,
+      displayName: toolName,
+      description: t.function.description,
+      enabled: isEnabled,
+    };
+  });
 }
 
 async function assertToolAllowed(toolName) {
-  const tool = await getTool(toolName);
-  if (!tool) {
-    throw new ToolExecutionError(TOOL_ERROR_CODES.TOOL_NOT_FOUND, "工具不存在");
-  }
-  const whitelist = normalizeWhitelist(getMcpConfig().toolWhitelist);
-  if (!isToolWhitelisted(toolName, whitelist)) {
-    throw new ToolExecutionError(TOOL_ERROR_CODES.TOOL_NOT_ALLOWED, "工具不在白名单");
-  }
-  if (!tool.enabled) {
+  await refreshToggleCacheIfNeeded();
+  
+  const isEnabled = toggleCacheMap.has(toolName) ? toggleCacheMap.get(toolName) : true;
+  if (!isEnabled) {
     throw new ToolExecutionError(TOOL_ERROR_CODES.TOOL_DISABLED, "工具已关闭");
   }
-  if (!isReadOnlyTool(tool)) {
-    throw new ToolExecutionError(TOOL_ERROR_CODES.TOOL_NOT_ALLOWED, "仅允许只读工具");
+
+  const whitelist = normalizeWhitelist(getMcpConfig().toolWhitelist);
+  if (!isToolWhitelisted(toolName, whitelist)) {
+    // 如果白名单是 '*' 则允许所有
+    if (whitelist.length === 1 && whitelist[0] === '*') {
+      return true;
+    }
+    throw new ToolExecutionError(TOOL_ERROR_CODES.TOOL_NOT_ALLOWED, "工具不在白名单");
   }
-  return tool;
+
+  return true;
 }
 
 async function updateToolToggle({ toolName, enabled, operatorId, reason }) {
-  const tool = toolMap.get(toolName);
-  if (!tool) {
-    throw new ToolExecutionError(TOOL_ERROR_CODES.TOOL_NOT_FOUND, "工具不存在");
-  }
-  const currentEnabled = toggleCacheMap.has(toolName)
-    ? toggleCacheMap.get(toolName)
-    : Boolean(tool.enabled);
+  const currentEnabled = toggleCacheMap.has(toolName) ? toggleCacheMap.get(toolName) : true;
+  
   await toggleRepository.upsertToolToggle({
     toolName,
     enabled,
     updatedBy: operatorId,
     reason,
   });
+  
   await toggleRepository.insertToggleAudit({
     toolName,
     beforeEnabled: currentEnabled,
     afterEnabled: enabled,
     operatorId,
   });
+  
   cacheExpiresAt = 0;
 }
 
 module.exports = {
   listTools,
-  getTool,
   assertToolAllowed,
   updateToolToggle,
 };

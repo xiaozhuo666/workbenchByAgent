@@ -143,13 +143,16 @@ async function chat({ text, conversationHistory = [], model = "qwen-plus", strea
 }
 
 async function chatWithMcp({ text, conversationHistory = [], model = "qwen-plus", stream = false, conversationId, userId }) {
-  const baseReply = await chat({ text, conversationHistory, model, stream });
+  // 注意：在原生 MCP 架构下，chatOrchestrator 内部会处理 baseReply 和多轮调用
+  // 暂时不支持流式 MCP 回复（因为需要多轮交互汇总），如果是流式请求则退回到普通对话
   if (!env.mcp.enabled || stream) {
+    const baseReply = await chat({ text, conversationHistory, model, stream });
     return { reply: baseReply, finalResponseType: "model_only", fallbackTriggered: false };
   }
+  
   return chatOrchestrator.runChatLoop({
     text,
-    baseReply,
+    conversationHistory, // 传入历史记录，让 AI 更有上下文
     conversationId,
     userId,
   });

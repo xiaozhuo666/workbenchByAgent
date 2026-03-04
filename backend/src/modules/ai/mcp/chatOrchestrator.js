@@ -1,93 +1,134 @@
 const env = require("../../../config/env");
 const repository = require("../ai.repository");
-const toolRegistry = require("./toolRegistry");
-const { executeTool } = require("./toolExecutor");
-const { TOOL_STATUS } = require("./tool.constants");
+const mcpManager = require("./mcpServerManager");
+const OpenAI = require("openai");
+const path = require('path');
 
-function buildArgsFromText(text) {
-  return { keyword: String(text || "").slice(0, 40) };
-}
+const openai = new OpenAI({
+  apiKey: process.env.DASHSCOPE_API_KEY,
+  baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+});
 
-function shouldTryTool(text) {
-  const query = String(text || "");
-  return /天气|查询|票务|外卖|工具|mcp/i.test(query);
-}
+/**
+ * 核心重构：原生 MCP 编排器
+ * 1. 自动发现所有 MCP Server 的工具
+ * 2. 对接 OpenAI 原生 tool_calls
+ * 3. 自动处理多轮调用 (Model-in-the-loop)
+ */
+async function runChatLoop({ text, conversationHistory = [], conversationId, userId }) {
+  // --- 1. 动态工具发现 (仅在启动或配置变更时执行，此处简化为每次请求检查) ---
+  const projectRoot = path.resolve(process.cwd());
+  const actualRoot = projectRoot.endsWith('backend') ? path.dirname(projectRoot) : projectRoot;
 
-async function runChatLoop({ text, baseReply, conversationId, userId }) {
-  const maxRounds = Math.max(1, env.mcp.maxCallRounds);
-  let currentReply = baseReply;
-  let fallbackTriggered = false;
+  // 注册 12306 Server
+  await mcpManager.registerServer('12306-server', {
+    command: 'node',
+    args: [path.join(actualRoot, 'MCP-Tools', '12306-mcp', 'build', 'index.js')],
+    env: {}
+  });
+
+  // 注册 WebSearch Server
+  await mcpManager.registerServer('web-search-server', {
+    command: 'node',
+    args: [path.join(actualRoot, 'MCP-Tools', 'open-webSearch', 'build', 'index.js')],
+    env: { MODE: 'stdio', DEFAULT_SEARCH_ENGINE: 'baidu' }
+  });
+
+  // --- 2. 准备对话上下文 ---
+  const messages = [
+    { 
+      role: "system", 
+      content: `你是一个全能的生活助手。你拥有强大的工具调用能力。
+今天的日期是 2026-03-04。
+请根据用户的问题，决定是否需要调用工具。如果需要，请直接调用。
+你可以进行多步调用，例如：先查站码，再查余票。
+当所有工具结果都拿到后，请为用户整理出一份美观的最终回答。` 
+    },
+    ...conversationHistory,
+    { role: "user", content: text }
+  ];
+
   let totalCalls = 0;
   let successCalls = 0;
   let failedCalls = 0;
 
-  if (!shouldTryTool(text)) {
-    return {
-      reply: currentReply,
-      finalResponseType: "model_only",
-      fallbackTriggered: false,
-    };
-  }
+  // --- 3. 核心循环：让模型自主控制工具链 ---
+  const maxRounds = 5; // 最多允许 5 轮交互
+  for (let i = 0; i < maxRounds; i++) {
+    const availableTools = mcpManager.getOpenAiTools();
+    
+    const response = await openai.chat.completions.create({
+      model: "qwen-plus",
+      messages: messages,
+      tools: availableTools.length > 0 ? availableTools : undefined,
+      tool_choice: "auto",
+    });
 
-  for (let roundIndex = 1; roundIndex <= maxRounds; roundIndex += 1) {
-    const toolName = "tool.mock.query";
-    totalCalls += 1;
-    try {
-      const tool = await toolRegistry.assertToolAllowed(toolName);
-      const execResult = await executeTool({
-        tool,
-        args: buildArgsFromText(text),
-      });
+    const message = response.choices[0].message;
+    messages.push(message);
 
-      await repository.logToolExecution({
-        conversationId,
-        userId,
-        roundIndex,
-        toolName,
-        argsSummary: JSON.stringify(buildArgsFromText(text)),
-        status: execResult.status,
-        durationMs: execResult.durationMs,
-        errorMessage: execResult.error?.message || null,
-      });
+    // 如果模型不需要调用工具，则跳出循环
+    if (!message.tool_calls || message.tool_calls.length === 0) {
+      break;
+    }
 
-      if (execResult.status === TOOL_STATUS.SUCCESS) {
+    // 处理模型发起的工具调用
+    for (const toolCall of message.tool_calls) {
+      totalCalls += 1;
+      const toolName = toolCall.function.name;
+      const args = JSON.parse(toolCall.function.arguments);
+
+      console.log(`[Orchestrator] Model calling tool: ${toolName}`, args);
+
+      try {
+        const result = await mcpManager.callTool(toolName, args);
         successCalls += 1;
-        currentReply = `${baseReply}\n\n[工具补充] ${execResult.result.answer || ""}`.trim();
-        break;
+        
+        // 将工具结果反馈给模型
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(result)
+        });
+
+        // 记录日志
+        await repository.logToolExecution({
+          conversationId,
+          userId,
+          roundIndex: i + 1,
+          toolName,
+          argsSummary: toolCall.function.arguments,
+          status: 'SUCCESS',
+          durationMs: 0,
+          errorMessage: null,
+        });
+      } catch (error) {
+        failedCalls += 1;
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: `Error: ${error.message}`
+        });
       }
-      failedCalls += 1;
-      fallbackTriggered = true;
-      break;
-    } catch (error) {
-      failedCalls += 1;
-      fallbackTriggered = true;
-      await repository.logToolExecution({
-        conversationId,
-        userId,
-        roundIndex,
-        toolName,
-        argsSummary: JSON.stringify(buildArgsFromText(text)),
-        status: TOOL_STATUS.REJECTED,
-        durationMs: 0,
-        errorMessage: error.message || "工具被拒绝",
-      });
-      break;
     }
   }
 
+  const finalReply = messages[messages.length - 1].content;
+
+  // 记录 Trace
   await repository.logToolTrace({
     conversationId,
     totalCalls,
     successCalls,
     failedCalls,
-    fallbackTriggered,
-    finalResponseType: fallbackTriggered ? "model_only" : "tool_enhanced",
+    fallbackTriggered: failedCalls > 0,
+    finalResponseType: totalCalls > 0 ? "tool_enhanced" : "model_only",
   });
 
   return {
-    reply: currentReply,
-    finalResponseType: fallbackTriggered ? "model_only" : "tool_enhanced",
-    fallbackTriggered,
+    reply: finalReply,
+    finalResponseType: totalCalls > 0 ? "tool_enhanced" : "model_only",
+    fallbackTriggered: failedCalls > 0,
   };
 }
 
