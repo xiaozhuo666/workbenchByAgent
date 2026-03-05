@@ -17,6 +17,7 @@ router.post("/tickets/search", ticketController.searchTickets);
 router.post("/tickets/recommendations", ticketController.getRecommendations);
 router.get("/mcp/tools", controller.listMcpTools);
 router.patch("/mcp/tools/:toolName/toggle", controller.toggleMcpTool);
+router.patch("/mcp/servers/:serverName/toggle", controller.toggleMcpServer);
 router.get("/conversations", controller.listConversations);
 router.get("/conversations/:conversationId", controller.getConversationHistory);
 router.delete("/conversations/:conversationId", controller.deleteConversation);

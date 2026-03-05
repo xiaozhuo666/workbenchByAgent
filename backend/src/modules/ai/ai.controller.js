@@ -296,8 +296,35 @@ async function toggleMcpTool(req, res, next) {
     res.json({
       code: "OK",
       data: {
-        toolName: tool.toolName,
-        enabled: Boolean(tool.enabled),
+        toolName: tool?.toolName,
+        enabled: Boolean(tool?.enabled),
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function toggleMcpServer(req, res, next) {
+  try {
+    const { serverName } = req.params;
+    const { enabled, reason } = req.body || {};
+    if (typeof enabled !== "boolean") {
+      throw appError("INVALID_PARAMS", "enabled 必须是布尔值", 400);
+    }
+    const result = await service.updateMcpServerToggle({
+      serverName,
+      enabled,
+      operatorId: req.auth.id,
+      reason: reason || null,
+    });
+    res.json({
+      code: "OK",
+      data: {
+        serverName: result.serverName,
+        enabled: result.enabled,
+        updatedCount: result.updatedCount,
         updatedAt: new Date().toISOString(),
       },
     });
@@ -359,4 +386,5 @@ module.exports = {
   deleteConversation,
   listMcpTools,
   toggleMcpTool,
+  toggleMcpServer,
 };
