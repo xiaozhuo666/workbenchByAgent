@@ -7,6 +7,7 @@ const authRoutes = require("./modules/auth/auth.routes");
 const todoRoutes = require("./modules/todo/todo.routes");
 const scheduleRoutes = require("./modules/schedule/schedule.routes");
 const aiRoutes = require("./modules/ai/ai.routes");
+const ticketRoutes = require("./modules/ai/ticket/ticket.routes");
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/todos", todoRoutes);
 app.use("/api/schedules", scheduleRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api", ticketRoutes);
 
 app.use(errorHandler);
 

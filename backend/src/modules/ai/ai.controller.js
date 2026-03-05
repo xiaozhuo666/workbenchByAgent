@@ -1,5 +1,6 @@
 const service = require("./ai.service");
 const repository = require("./ai.repository");
+const ticketService = require("./ticket/ticket.service");
 const { v4: uuidv4 } = require("uuid");
 const env = require("../../config/env");
 const { appError } = require("../../middleware/errorHandler");
@@ -147,6 +148,8 @@ async function chat(req, res, next) {
     const finalHistory = await repository.getConversationHistory(req.auth.id, cid);
     const messages = finalHistory.map(h => ({ role: h.role, content: h.content }));
 
+    const parsedDraft = service.parseTicketDraft(text);
+
     // 3. Handle Streaming vs Single Reply
     if (stream) {
       res.setHeader("Content-Type", "text/event-stream");
@@ -203,6 +206,30 @@ async function chat(req, res, next) {
       res.write("data: [DONE]\n\n");
       res.end();
     } else {
+      if (parsedDraft) {
+        const draft = await ticketService.createDraft({
+          userId: req.auth.id,
+          source: "ai_assistant",
+          route: parsedDraft.route,
+          date: parsedDraft.date,
+          preferences: parsedDraft.preferences,
+        });
+        const draftPayload = await ticketService.getDraftOrThrow({
+          userId: req.auth.id,
+          draftId: draft.draftId,
+        });
+        const reply = "已识别到查票需求，已为你生成行程卡，可直接查看结果或继续细化。";
+        await repository.saveMessage(cid, "assistant", reply);
+        return res.json({
+          code: "OK",
+          data: {
+            reply,
+            conversationId: cid,
+            ticketDraft: draftPayload,
+          },
+        });
+      }
+
       const { reply } = await service.chatWithMcp({ 
         text, 
         conversationHistory: messages.slice(0, -1),

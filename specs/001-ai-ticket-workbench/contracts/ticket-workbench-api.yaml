@@ -1,0 +1,269 @@
+openapi: 3.0.3
+info:
+  title: Ticket Workbench API Contract
+  version: 1.0.0
+  description: |
+    AI 票务工作台核心接口契约。
+    覆盖聊天侧草稿创建、票务页草稿拉取、查询与推荐接口。
+servers:
+  - url: /api
+paths:
+  /ticket-drafts:
+    post:
+      summary: 创建行程草稿
+      description: 聊天识别查票意图后创建结构化行程草稿。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDraftRequest"
+      responses:
+        "200":
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateDraftResponse"
+        "400":
+          description: 参数错误
+  /ticket-drafts/{draftId}:
+    get:
+      summary: 获取行程草稿
+      parameters:
+        - name: draftId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetDraftResponse"
+        "404":
+          description: 草稿不存在
+        "410":
+          description: 草稿已过期
+  /tickets/search:
+    post:
+      summary: 基于草稿查询票务结果
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TicketSearchRequest"
+      responses:
+        "200":
+          description: 查询成功或部分成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketSearchResponse"
+        "408":
+          description: 上游超时
+  /tickets/recommendations:
+    post:
+      summary: 生成 AI 三方案推荐
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecommendationRequest"
+      responses:
+        "200":
+          description: 推荐生成成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationResponse"
+        "200_PARTIAL":
+          description: 推荐部分可用（基础查询不受影响）
+components:
+  schemas:
+    ApiEnvelope:
+      type: object
+      required: [code, data]
+      properties:
+        code:
+          type: string
+          example: OK
+        data:
+          type: object
+    Route:
+      type: object
+      required: [fromCity, toCity]
+      properties:
+        fromCity:
+          type: string
+        fromStationCode:
+          type: string
+        toCity:
+          type: string
+        toStationCode:
+          type: string
+    Preferences:
+      type: object
+      properties:
+        trainTypes:
+          type: array
+          items:
+            type: string
+        departureTimeRange:
+          type: string
+        seatTypes:
+          type: array
+          items:
+            type: string
+        strategy:
+          type: string
+          enum: [fastest, cheapest, comfortable]
+    TripDraft:
+      type: object
+      required: [draftId, route, date, status]
+      properties:
+        draftId:
+          type: string
+        source:
+          type: string
+          example: ai_assistant
+        route:
+          $ref: "#/components/schemas/Route"
+        date:
+          type: string
+          format: date
+        preferences:
+          $ref: "#/components/schemas/Preferences"
+        status:
+          type: string
+          enum: [collecting, ready, expired]
+        expiresAt:
+          type: string
+          format: date-time
+    CreateDraftRequest:
+      type: object
+      required: [route, date]
+      properties:
+        route:
+          $ref: "#/components/schemas/Route"
+        date:
+          type: string
+          format: date
+        preferences:
+          $ref: "#/components/schemas/Preferences"
+    CreateDraftResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                draftId:
+                  type: string
+                status:
+                  type: string
+                expiresAt:
+                  type: string
+                  format: date-time
+    GetDraftResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/TripDraft"
+    TicketOption:
+      type: object
+      properties:
+        optionId:
+          type: string
+        tripType:
+          type: string
+          enum: [direct, transfer]
+        trainNo:
+          type: string
+        departAt:
+          type: string
+        arriveAt:
+          type: string
+        durationMinutes:
+          type: integer
+        priceMin:
+          type: number
+        seatAvailability:
+          type: object
+          additionalProperties:
+            type: string
+    TicketSearchRequest:
+      type: object
+      required: [draftId]
+      properties:
+        draftId:
+          type: string
+        sortBy:
+          type: string
+        filters:
+          type: object
+          additionalProperties: true
+    TicketSearchResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                directOptions:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/TicketOption"
+                transferOptions:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/TicketOption"
+                meta:
+                  type: object
+                  properties:
+                    queryStatus:
+                      type: string
+                    fetchedAt:
+                      type: string
+                      format: date-time
+                    notice:
+                      type: string
+    RecommendationItem:
+      type: object
+      properties:
+        optionId:
+          type: string
+        reasons:
+          type: array
+          items:
+            type: string
+        confidence:
+          type: string
+    RecommendationRequest:
+      type: object
+      required: [draftId]
+      properties:
+        draftId:
+          type: string
+    RecommendationResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                fastest:
+                  $ref: "#/components/schemas/RecommendationItem"
+                cheapest:
+                  $ref: "#/components/schemas/RecommendationItem"
+                comfortable:
+                  $ref: "#/components/schemas/RecommendationItem"

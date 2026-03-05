@@ -1,14 +1,14 @@
 {
   "files": {
-    "main.css": "/static/css/main.1d4303a8.css",
-    "main.js": "/static/js/main.68ff59f4.js",
+    "main.css": "/static/css/main.102b9b1d.css",
+    "main.js": "/static/js/main.5ce85a13.js",
     "static/media/auth-tech-bg.svg": "/static/media/auth-tech-bg.16da431f7138b51c4815ac745b484176.svg",
     "index.html": "/index.html",
-    "main.1d4303a8.css.map": "/static/css/main.1d4303a8.css.map",
-    "main.68ff59f4.js.map": "/static/js/main.68ff59f4.js.map"
+    "main.102b9b1d.css.map": "/static/css/main.102b9b1d.css.map",
+    "main.5ce85a13.js.map": "/static/js/main.5ce85a13.js.map"
   },
   "entrypoints": [
-    "static/css/main.1d4303a8.css",
-    "static/js/main.68ff59f4.js"
+    "static/css/main.102b9b1d.css",
+    "static/js/main.5ce85a13.js"
   ]
 }

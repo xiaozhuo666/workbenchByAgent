@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Layout, Menu, Avatar, Typography, Button, Tooltip, Spin, Card, Row, Col, Space, Drawer } from "antd";
+import { Layout, Menu, Avatar, Typography, Button, Tooltip, Spin, Card, Row, Col, Space, Drawer, message } from "antd";
 import {
   UnorderedListOutlined,
   CalendarOutlined,
@@ -13,7 +13,8 @@ import {
   ShoppingOutlined,
   RightOutlined,
   MenuOutlined,
-  CloseOutlined
+  CloseOutlined,
+  LeftOutlined
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { getUser, doLogout } from "../../services/authStore";
@@ -22,12 +23,14 @@ import TodoList from "../../components/TodoList";
 import ScheduleList from "../../components/ScheduleList";
 import AISidebar from "../../components/AISidebar";
 import McpTogglePage from "../McpTogglePage";
+import TicketsPage from "../TicketsPage";
 import "./index.css";
 
 const { Sider, Content, Header } = Layout;
 const { Title, Text, Paragraph } = Typography;
 
 const HomePage = ({ isGuest, initialTab = "home" }) => {
+  const [messageApi, messageContextHolder] = message.useMessage();
   const [collapsed, setCollapsed] = useState(false);
   const [showAISidebar, setShowAISidebar] = useState(window.innerWidth > 1200);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -55,6 +58,12 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
   useEffect(() => {
     setActiveTab(initialTab || "home");
   }, [initialTab]);
+
+  useEffect(() => {
+    if (activeTab === "tickets") {
+      setShowAISidebar(false);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (isGuest && guestLoading) {
@@ -115,22 +124,38 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
       label: "邮件助手",
     },
     {
+      key: "tickets",
+      icon: <CarOutlined />,
+      label: "票务出行",
+    },
+    {
       key: "mcp",
       icon: <ThunderboltOutlined />,
       label: "MCP 开关",
     },
   ];
 
-  const FeatureCard = ({ icon, title, desc, onClick, color, bgColor }) => (
-    <div className="feature-card" onClick={onClick}>
+  const handleComingSoon = () => {
+    messageApi.info("该功能暂时无法使用，请稍后重试");
+  };
+
+  const FeatureCard = ({ icon, title, desc, onClick, color, bgColor, comingSoon = false }) => (
+    <div
+      className={`feature-card${comingSoon ? " feature-card--coming-soon" : ""}`}
+      onClick={onClick}
+    >
       <div className="icon-wrapper" style={{ backgroundColor: bgColor, color: color }}>
         {icon}
       </div>
       <div className="card-title">{title}</div>
       <div className="card-desc">{desc}</div>
       <div style={{ marginTop: 'auto', paddingTop: 16 }}>
-        <Button type="text" size="small" style={{ padding: 0, color: color }}>
-          立即开启 <RightOutlined style={{ fontSize: 10 }} />
+        <Button
+          type="text"
+          size="small"
+          style={{ padding: 0, color: comingSoon ? "#64748B" : color }}
+        >
+          {comingSoon ? "敬请期待" : "立即前往"} {!comingSoon && <RightOutlined style={{ fontSize: 10 }} />}
         </Button>
       </div>
     </div>
@@ -159,19 +184,9 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
             icon={<CarOutlined />} 
             title="出行票务" 
             desc="查询高铁动态，智能规划最优行程"
-            onClick={() => setActiveTab("home")}
+            onClick={() => setActiveTab("tickets")}
             color="#6366F1"
             bgColor="#EEF2FF"
-          />
-        </Col>
-        <Col xs={24} sm={12} lg={8}>
-          <FeatureCard 
-            icon={<ShoppingOutlined />} 
-            title="精选外卖" 
-            desc="根据口味为您推荐附近最高评分美食"
-            onClick={() => setActiveTab("home")}
-            color="#F59E0B"
-            bgColor="#FFFBEB"
           />
         </Col>
         <Col xs={24} sm={12} lg={8}>
@@ -196,12 +211,24 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
         </Col>
         <Col xs={24} sm={12} lg={8}>
           <FeatureCard 
+            icon={<ShoppingOutlined />} 
+            title="精选外卖" 
+            desc="根据口味为您推荐附近最高评分美食"
+            onClick={handleComingSoon}
+            color="#F59E0B"
+            bgColor="#FFFBEB"
+            comingSoon
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={8}>
+          <FeatureCard 
             icon={<MailOutlined />} 
             title="智能邮件" 
             desc="通过自然语言极速处理 QQ 邮箱沟通"
-            onClick={() => setActiveTab("email")}
+            onClick={handleComingSoon}
             color="#8B5CF6"
             bgColor="#F5F3FF"
+            comingSoon
           />
         </Col>
       </Row>
@@ -242,6 +269,8 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
         );
       case "mcp":
         return <McpTogglePage embedded />;
+      case "tickets":
+        return <TicketsPage embedded />;
       case "home":
       default:
         return renderWelcome();
@@ -249,30 +278,35 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
   };
 
   const NavigationContent = (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div className="logo-container">
-        <ThunderboltOutlined style={{ marginRight: 12, fontSize: 24 }} />
-        个人生活助手
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+      <div className="logo-container" style={{ paddingLeft: collapsed ? 0 : 24, justifyContent: collapsed ? "center" : "flex-start", overflow: "hidden", whiteSpace: "nowrap", flexShrink: 0 }}>
+        <ThunderboltOutlined style={{ marginRight: collapsed ? 0 : 12, fontSize: 24, minWidth: 24 }} />
+        {!collapsed && <span style={{ transition: "opacity 0.2s" }}>个人生活助手</span>}
       </div>
-      <Menu
-        mode="inline"
-        selectedKeys={[activeTab]}
-        className="sider-menu"
-        items={menuItems}
-        onClick={handleMenuClick}
-      />
-      <div className="user-info-footer">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+        <Menu
+          mode="inline"
+          selectedKeys={[activeTab]}
+          className="sider-menu"
+          items={menuItems}
+          onClick={handleMenuClick}
+          style={{ paddingBottom: 100 }} /* 给底部的 user-info-footer 留出空间 */
+        />
+      </div>
+      <div className="user-info-footer" style={{ padding: collapsed ? '16px 8px' : '20px 24px', transition: 'all 0.2s', background: 'var(--sidebar-bg)' }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between", flexDirection: collapsed ? "column" : "row" }}>
           <Avatar 
             src={user?.avatar}
             icon={<UserOutlined />} 
-            style={{ backgroundColor: "var(--primary-color)" }}
+            style={{ backgroundColor: "var(--primary-color)", marginBottom: collapsed ? 12 : 0 }}
           />
-          <div style={{ marginLeft: 12, flex: 1, overflow: "hidden" }}>
-            <Text ellipsis strong block style={{ color: "var(--text-main)" }}>{user?.username}</Text>
-            <Text type="secondary" style={{ fontSize: 11 }}>生活管理中</Text>
-          </div>
-          <Tooltip title={isGuest ? "登录" : "退出登录"}>
+          {!collapsed && (
+            <div style={{ marginLeft: 12, flex: 1, overflow: "hidden" }}>
+              <Text ellipsis strong block style={{ color: "var(--text-main)" }}>{user?.username}</Text>
+              <Text type="secondary" style={{ fontSize: 11 }}>生活管理中</Text>
+            </div>
+          )}
+          <Tooltip title={isGuest ? "登录" : "退出登录"} placement={collapsed ? "right" : "top"}>
             <Button
               type="text"
               icon={isGuest ? <LoginOutlined /> : <LogoutOutlined />}
@@ -288,6 +322,7 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
 
   return (
     <Layout className="home-layout">
+      {messageContextHolder}
       {/* Desktop Sider */}
       {!isMobile && (
         <Sider
@@ -297,8 +332,15 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
           theme="light"
           className="sider-content"
           width={260}
+          trigger={null}
         >
           {NavigationContent}
+          <div 
+            className="sider-toggle-button" 
+            onClick={() => setCollapsed(!collapsed)}
+          >
+            {collapsed ? <RightOutlined /> : <LeftOutlined />}
+          </div>
         </Sider>
       )}
 
@@ -328,7 +370,7 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
         </div>
 
         <Content style={{ position: 'relative', overflowY: 'auto' }}>
-          <div className="main-content">
+          <div className={`main-content ${activeTab === "tickets" ? "main-content--tickets" : ""}`}>
             {renderContent()}
           </div>
 
@@ -340,7 +382,7 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
               icon={showAISidebar && isMobile ? <CloseOutlined /> : <ThunderboltOutlined style={{ fontSize: 24 }} />}
               style={{
                 position: "fixed",
-                right: showAISidebar ? 444 : 32,
+                right: 32,
                 bottom: 32,
                 width: 64,
                 height: 64,
@@ -359,7 +401,7 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
         </Content>
       </Layout>
 
-      {/* AI Assistant - Sidebar for Desktop, Drawer for Mobile */}
+      {/* AI Assistant - Drawer for Mobile, Fixed Panel for Desktop */}
       {isMobile ? (
         <Drawer
           placement="right"
@@ -378,52 +420,52 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
           <AISidebar onDraftSaved={() => setRefreshKey(prev => prev + 1)} />
         </Drawer>
       ) : (
-        showAISidebar && (
-          <Sider
-            width={420}
-            theme="light"
-            style={{
-              borderLeft: "1px solid var(--border-color)",
-              height: "100vh",
-              position: "sticky",
-              right: 0,
-              top: 0,
-              zIndex: 1001,
-              boxShadow: "-10px 0 30px rgba(0,0,0,0.03)",
-            }}
-            className="ai-sider"
-          >
-            <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-              <div style={{ 
-                padding: "20px 24px", 
-                display: "flex", 
-                justifyContent: "space-between", 
-                alignItems: "center", 
-                borderBottom: "1px solid var(--border-color)",
-                background: "#fff"
-              }}>
-                <Space>
-                  <div style={{ 
-                    width: 32, 
-                    height: 32, 
-                    borderRadius: 10, 
-                    background: "linear-gradient(135deg, #0EA5E9 0%, #2563EB 100%)", 
-                    display: "flex", 
-                    alignItems: "center", 
-                    justifyContent: "center" 
-                  }}>
-                    <ThunderboltOutlined style={{ color: "#fff", fontSize: 16 }} />
-                  </div>
-                  <Title level={5} style={{ margin: 0, fontWeight: 700 }}>AI 助手</Title>
-                </Space>
-                <Button type="text" onClick={() => setShowAISidebar(false)} icon={<RightOutlined />} />
-              </div>
-              <div style={{ flex: 1, overflow: "hidden" }}>
-                <AISidebar onDraftSaved={() => setRefreshKey(prev => prev + 1)} />
-              </div>
+        <div
+          style={{
+            position: "fixed",
+            right: 0,
+            top: 0,
+            width: 420,
+            height: "100vh",
+            background: "#fff",
+            borderLeft: "1px solid var(--border-color)",
+            zIndex: 999, /* 略低于 toggle 按钮 */
+            boxShadow: showAISidebar ? "-10px 0 30px rgba(0,0,0,0.08)" : "none",
+            display: "flex",
+            flexDirection: "column",
+            transform: showAISidebar ? "translateX(0)" : "translateX(100%)",
+            transition: "transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease",
+          }}
+          className="ai-fixed-panel"
+        >
+            <div style={{ 
+              padding: "20px 24px", 
+              display: "flex", 
+              justifyContent: "space-between", 
+              alignItems: "center", 
+              borderBottom: "1px solid var(--border-color)",
+              background: "#fff"
+            }}>
+              <Space>
+                <div style={{ 
+                  width: 32, 
+                  height: 32, 
+                  borderRadius: 10, 
+                  background: "linear-gradient(135deg, #0EA5E9 0%, #2563EB 100%)", 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "center" 
+                }}>
+                  <ThunderboltOutlined style={{ color: "#fff", fontSize: 16 }} />
+                </div>
+                <Title level={5} style={{ margin: 0, fontWeight: 700 }}>AI 助手</Title>
+              </Space>
+              <Button type="text" onClick={() => setShowAISidebar(false)} icon={<RightOutlined />} />
             </div>
-          </Sider>
-        )
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              <AISidebar onDraftSaved={() => setRefreshKey(prev => prev + 1)} />
+            </div>
+          </div>
       )}
     </Layout>
   );

@@ -172,6 +172,35 @@ async function updateMcpToolToggle({ toolName, enabled, operatorId, reason }) {
   return toolRegistry.getTool(toolName);
 }
 
+function parseTicketDraft(text) {
+  const input = String(text || "").trim();
+  const matched = input.match(/(?:查|看).*(?:从)?([\u4e00-\u9fa5]{2,8})到([\u4e00-\u9fa5]{2,8}).*(今天|明天|后天|\d{4}-\d{2}-\d{2})/);
+  if (!matched) return null;
+
+  const fromCity = matched[1];
+  const toCity = matched[2];
+  let date = matched[3];
+  const now = dayjs();
+  if (date === "今天") date = now.format("YYYY-MM-DD");
+  if (date === "明天") date = now.add(1, "day").format("YYYY-MM-DD");
+  if (date === "后天") date = now.add(2, "day").format("YYYY-MM-DD");
+
+  const trainTypes = /高铁|动车/.test(input) ? ["G", "D"] : [];
+  return {
+    route: {
+      fromCity,
+      toCity,
+    },
+    date,
+    preferences: {
+      trainTypes,
+      departureTimeRange: "",
+      seatTypes: [],
+      strategy: "fastest",
+    },
+  };
+}
+
 /**
  * Summarize conversation to generate a title
  */
@@ -204,4 +233,5 @@ module.exports = {
   generateTitle,
   listMcpTools,
   updateMcpToolToggle,
+  parseTicketDraft,
 };

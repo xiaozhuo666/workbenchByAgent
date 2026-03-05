@@ -9,9 +9,11 @@ import {
 import aiStore from "../../services/aiStore";
 import { getTodos, batchUpdateTodoStatus, createTodo } from "../../api/todoApi";
 import { createSchedule } from "../../api/scheduleApi";
+import { createTicketDraft } from "../../api/ticketApi";
 import AIConfirmationModal from "../AIConfirmationModal";
 import ConversationList from "../AI/ConversationList";
 import ModelSelector from "../AI/ModelSelector";
+import TripDraftCard from "../AI/TripDraftCard";
 import { exportToMarkdown } from "../../utils/exportUtils";
 import dayjs from "dayjs";
 
@@ -77,6 +79,29 @@ const AISidebar = ({ onDraftSaved }) => {
   /**
    * Process sending a message (supports streaming)
    */
+  const parseTicketDraftInput = (text) => {
+    const input = String(text || "").trim();
+    const matched = input.match(/(?:查|看).*(?:从)?([\u4e00-\u9fa5]{2,8})到([\u4e00-\u9fa5]{2,8}).*(今天|明天|后天|\d{4}-\d{2}-\d{2})/);
+    if (!matched) return null;
+    const fromCity = matched[1];
+    const toCity = matched[2];
+    let date = matched[3];
+    const now = dayjs();
+    if (date === "今天") date = now.format("YYYY-MM-DD");
+    if (date === "明天") date = now.add(1, "day").format("YYYY-MM-DD");
+    if (date === "后天") date = now.add(2, "day").format("YYYY-MM-DD");
+    return {
+      route: { fromCity, toCity },
+      date,
+      preferences: {
+        trainTypes: /高铁|动车/.test(input) ? ["G", "D"] : [],
+        seatTypes: [],
+        departureTimeRange: "",
+        strategy: "fastest",
+      },
+    };
+  };
+
   const processSend = async (text) => {
     if (!text || !text.trim()) return;
     
@@ -87,6 +112,26 @@ const AISidebar = ({ onDraftSaved }) => {
     setLoading(true);
 
     try {
+      const ticketDraftPayload = parseTicketDraftInput(text);
+      if (ticketDraftPayload) {
+        const draftMeta = await createTicketDraft(ticketDraftPayload);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: "已为你生成行程卡，你可以直接查看结果或继续细化条件。",
+            ticketDraft: {
+              ...ticketDraftPayload,
+              draftId: draftMeta.draftId,
+              status: draftMeta.status,
+              expiresAt: draftMeta.expiresAt,
+            },
+          },
+        ]);
+        setLoading(false);
+        return;
+      }
+
       // 1. Check for batch commands or task generation first (Legacy features)
       const currentTodos = await getTodos();
       const commandResult = await aiStore.executeCommand(text, currentTodos, conversationId);
@@ -394,6 +439,15 @@ const AISidebar = ({ onDraftSaved }) => {
                       {msg.saved ? "已保存" : "全部保存"}
                     </Button>
                   </div>
+                )}
+
+                {msg.ticketDraft && (
+                  <TripDraftCard
+                    draft={msg.ticketDraft}
+                    onRefine={() => {
+                      message.info("请继续描述偏好，例如：最早出发、最短耗时、二等座。");
+                    }}
+                  />
                 )}
               </Card>
             </Space>
