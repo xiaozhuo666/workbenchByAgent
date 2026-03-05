@@ -9,6 +9,22 @@ const openai = new OpenAI({
   baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
 });
 
+function getCnDateString() {
+  const parts = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const map = {};
+  for (const part of parts) {
+    if (part.type !== "literal") {
+      map[part.type] = part.value;
+    }
+  }
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
 /**
  * 核心重构：原生 MCP 编排器
  * 1. 自动发现所有 MCP Server 的工具
@@ -35,11 +51,12 @@ async function runChatLoop({ text, conversationHistory = [], conversationId, use
   });
 
   // --- 2. 准备对话上下文 ---
+  const todayCn = getCnDateString();
   const messages = [
     { 
       role: "system", 
       content: `你是一个全能的生活助手。你拥有强大的工具调用能力。
-今天的日期是 2026-03-04。
+今天的日期是 ${todayCn}（中国时区 Asia/Shanghai）。
 请根据用户的问题，决定是否需要调用工具。如果需要，请直接调用。
 你可以进行多步调用，例如：先查站码，再查余票。
 当所有工具结果都拿到后，请为用户整理出一份美观的最终回答。` 

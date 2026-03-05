@@ -400,9 +400,9 @@ const AISidebar = ({ onDraftSaved }) => {
                           wordBreak: "break-word",
                           overflowWrap: "anywhere",
                         }}
-                        onClick={() => processSend("帮我查询明天北京到上海的高铁票")}
+                        onClick={() => processSend("帮我查询明天杭州到深圳的车票")}
                       >
-                        “帮我查询明天北京到上海的高铁票”
+                        “帮我查询明天杭州到深圳的车票”
                       </Button>
                       <Button
                         type="link"
