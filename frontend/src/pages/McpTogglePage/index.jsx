@@ -54,36 +54,39 @@ function McpTogglePage({ embedded = false }) {
 
           {error ? <Alert type="error" showIcon message={error} /> : null}
 
-          <Table
-            rowKey="toolName"
-            loading={loading}
-            dataSource={tools}
-            pagination={false}
-            columns={[
-              { title: "工具名", dataIndex: "toolName" },
-              { title: "显示名", dataIndex: "displayName" },
-              {
-                title: "风险",
-                dataIndex: "riskLevel",
-                render: (risk) => <Tag color={risk === "low" ? "green" : "orange"}>{risk || "unknown"}</Tag>,
-              },
-              {
-                title: "状态",
-                dataIndex: "enabled",
-                render: (enabled) => <Tag color={enabled ? "blue" : "default"}>{enabled ? "已启用" : "已关闭"}</Tag>,
-              },
-              {
-                title: "操作",
-                key: "action",
-                render: (_, record) => (
-                  <Switch
-                    checked={Boolean(record.enabled)}
-                    onChange={(checked) => onToggle(record, checked)}
-                  />
-                ),
-              },
-            ]}
-          />
+          <div className="mcp-toggle-page__table">
+            <Table
+              rowKey="toolName"
+              loading={loading}
+              dataSource={tools}
+              pagination={false}
+              scroll={{ x: 900 }}
+              columns={[
+                { title: "工具名", dataIndex: "toolName" },
+                { title: "显示名", dataIndex: "displayName" },
+                {
+                  title: "风险",
+                  dataIndex: "riskLevel",
+                  render: (risk) => <Tag color={risk === "low" ? "green" : "orange"}>{risk || "unknown"}</Tag>,
+                },
+                {
+                  title: "状态",
+                  dataIndex: "enabled",
+                  render: (enabled) => <Tag color={enabled ? "blue" : "default"}>{enabled ? "已启用" : "已关闭"}</Tag>,
+                },
+                {
+                  title: "操作",
+                  key: "action",
+                  render: (_, record) => (
+                    <Switch
+                      checked={Boolean(record.enabled)}
+                      onChange={(checked) => onToggle(record, checked)}
+                    />
+                  ),
+                },
+              ]}
+            />
+          </div>
         </Space>
       </Card>
     </div>

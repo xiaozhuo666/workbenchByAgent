@@ -2,10 +2,32 @@
   padding: 24px;
   background: #f7f8fa;
   min-height: 100vh;
+  box-sizing: border-box;
+  overflow: auto;
 }
 
 .mcp-toggle-page.embedded {
   min-height: auto;
   background: transparent;
   padding: 0;
+  height: 100%;
+  overflow: auto;
+}
+
+.mcp-toggle-page .ant-card {
+  width: 100%;
+}
+
+.mcp-toggle-page .ant-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.mcp-toggle-page__table {
+  max-height: calc(100vh - 280px);
+  overflow-y: auto;
+}
+
+.mcp-toggle-page.embedded .mcp-toggle-page__table {
+  max-height: calc(100vh - 240px);
 }

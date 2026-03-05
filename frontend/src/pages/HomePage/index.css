@@ -103,12 +103,15 @@
 /* Main Content Area */
 .main-content {
   padding: 40px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   max-width: 1200px;
   margin: 0 auto;
   transition: padding-right 0.3s ease;
 }
 
-.main-content--tickets {
+.main-content--wide {
   max-width: none;
   padding: 24px;
 }

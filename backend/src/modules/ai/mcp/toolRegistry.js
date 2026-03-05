@@ -1,6 +1,7 @@
 const { getMcpConfig } = require("../../../config/mcp");
 const { TOOL_ERROR_CODES, ToolExecutionError } = require("./tool.errors");
 const mcpManager = require("./mcpServerManager");
+const { ensureCoreServersRegistered } = require("./serverBootstrap");
 const { normalizeWhitelist, isToolWhitelisted } = require("./whitelist");
 const toggleRepository = require("./toggle.repository");
 
@@ -22,6 +23,7 @@ async function refreshToggleCacheIfNeeded() {
  * 获取所有可用工具（包含动态发现的 MCP 工具）
  */
 async function listTools() {
+  await ensureCoreServersRegistered();
   await refreshToggleCacheIfNeeded();
   const allTools = mcpManager.getOpenAiTools();
   
@@ -36,6 +38,11 @@ async function listTools() {
       enabled: isEnabled,
     };
   });
+}
+
+async function getTool(toolName) {
+  const tools = await listTools();
+  return tools.find((item) => item.toolName === toolName) || null;
 }
 
 async function assertToolAllowed(toolName) {
@@ -80,6 +87,7 @@ async function updateToolToggle({ toolName, enabled, operatorId, reason }) {
 
 module.exports = {
   listTools,
+  getTool,
   assertToolAllowed,
   updateToolToggle,
 };

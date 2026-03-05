@@ -1,8 +1,8 @@
 const env = require("../../../config/env");
 const repository = require("../ai.repository");
 const mcpManager = require("./mcpServerManager");
+const { ensureCoreServersRegistered } = require("./serverBootstrap");
 const OpenAI = require("openai");
-const path = require('path');
 
 const openai = new OpenAI({
   apiKey: process.env.DASHSCOPE_API_KEY,
@@ -32,23 +32,8 @@ function getCnDateString() {
  * 3. 自动处理多轮调用 (Model-in-the-loop)
  */
 async function runChatLoop({ text, conversationHistory = [], conversationId, userId }) {
-  // --- 1. 动态工具发现 (仅在启动或配置变更时执行，此处简化为每次请求检查) ---
-  const projectRoot = path.resolve(process.cwd());
-  const actualRoot = projectRoot.endsWith('backend') ? path.dirname(projectRoot) : projectRoot;
-
-  // 注册 12306 Server
-  await mcpManager.registerServer('12306-server', {
-    command: 'node',
-    args: [path.join(actualRoot, 'MCP-Tools', '12306-mcp', 'build', 'index.js')],
-    env: {}
-  });
-
-  // 注册 WebSearch Server
-  await mcpManager.registerServer('web-search-server', {
-    command: 'node',
-    args: [path.join(actualRoot, 'MCP-Tools', 'open-webSearch', 'build', 'index.js')],
-    env: { MODE: 'stdio', DEFAULT_SEARCH_ENGINE: 'baidu' }
-  });
+  // --- 1. 动态工具发现 ---
+  await ensureCoreServersRegistered();
 
   // --- 2. 准备对话上下文 ---
   const todayCn = getCnDateString();

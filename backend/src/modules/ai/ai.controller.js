@@ -4,7 +4,6 @@ const ticketService = require("./ticket/ticket.service");
 const { v4: uuidv4 } = require("uuid");
 const env = require("../../config/env");
 const { appError } = require("../../middleware/errorHandler");
-const authRepository = require("../auth/auth.repository");
 
 async function ensureConversation(userId, conversationId, firstText, model) {
   let cid = conversationId;
@@ -272,21 +271,8 @@ async function chat(req, res, next) {
   }
 }
 
-async function ensureAdmin(req) {
-  const userId = Number(req.auth?.id);
-  let allow = env.mcp.adminUserIds.includes(userId);
-  if (!allow) {
-    const user = await authRepository.findById(userId);
-    allow = user?.username === "system";
-  }
-  if (!allow) {
-    throw appError("AUTH_FORBIDDEN", "仅管理员可操作 MCP 开关", 403);
-  }
-}
-
 async function listMcpTools(req, res, next) {
   try {
-    await ensureAdmin(req);
     const tools = await service.listMcpTools();
     res.json({ code: "OK", data: tools });
   } catch (error) {
@@ -296,7 +282,6 @@ async function listMcpTools(req, res, next) {
 
 async function toggleMcpTool(req, res, next) {
   try {
-    await ensureAdmin(req);
     const { toolName } = req.params;
     const { enabled, reason } = req.body || {};
     if (typeof enabled !== "boolean") {
