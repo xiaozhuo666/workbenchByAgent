@@ -1,9 +1,9 @@
 const service = require("./ai.service");
 const repository = require("./ai.repository");
+const ticketService = require("./ticket/ticket.service");
 const { v4: uuidv4 } = require("uuid");
 const env = require("../../config/env");
 const { appError } = require("../../middleware/errorHandler");
-const authRepository = require("../auth/auth.repository");
 
 async function ensureConversation(userId, conversationId, firstText, model) {
   let cid = conversationId;
@@ -123,6 +123,24 @@ async function executeCommand(req, res, next) {
   }
 }
 
+async function parseTicketIntent(req, res, next) {
+  try {
+    const { text, conversationId } = req.body || {};
+    if (!text) throw new Error("请输入内容");
+
+    let historyMessages = [];
+    if (conversationId) {
+      const history = await repository.getConversationHistory(req.auth.id, conversationId);
+      historyMessages = history.map((h) => ({ role: h.role, content: h.content }));
+    }
+
+    const parsed = await service.parseTicketIntentByAI(text, historyMessages);
+    res.json({ code: "OK", data: parsed });
+  } catch (error) {
+    next(error);
+  }
+}
+
 /**
  * Chat with AI (supports sessions and streaming)
  */
@@ -146,6 +164,8 @@ async function chat(req, res, next) {
     // Refresh history after potentially saving new message
     const finalHistory = await repository.getConversationHistory(req.auth.id, cid);
     const messages = finalHistory.map(h => ({ role: h.role, content: h.content }));
+
+    const parsedTicketIntent = await service.parseTicketIntentByAI(text, messages.slice(0, -1));
 
     // 3. Handle Streaming vs Single Reply
     if (stream) {
@@ -203,6 +223,30 @@ async function chat(req, res, next) {
       res.write("data: [DONE]\n\n");
       res.end();
     } else {
+      if (parsedTicketIntent?.payload) {
+        const draft = await ticketService.createDraft({
+          userId: req.auth.id,
+          source: "ai_assistant",
+          route: parsedTicketIntent.payload.route,
+          date: parsedTicketIntent.payload.date,
+          preferences: parsedTicketIntent.payload.preferences,
+        });
+        const draftPayload = await ticketService.getDraftOrThrow({
+          userId: req.auth.id,
+          draftId: draft.draftId,
+        });
+        const reply = "已识别到查票需求，已为你生成行程卡，可直接查看结果或继续细化。";
+        await repository.saveMessage(cid, "assistant", reply);
+        return res.json({
+          code: "OK",
+          data: {
+            reply,
+            conversationId: cid,
+            ticketDraft: draftPayload,
+          },
+        });
+      }
+
       const { reply } = await service.chatWithMcp({ 
         text, 
         conversationHistory: messages.slice(0, -1),
@@ -227,21 +271,8 @@ async function chat(req, res, next) {
   }
 }
 
-async function ensureAdmin(req) {
-  const userId = Number(req.auth?.id);
-  let allow = env.mcp.adminUserIds.includes(userId);
-  if (!allow) {
-    const user = await authRepository.findById(userId);
-    allow = user?.username === "system";
-  }
-  if (!allow) {
-    throw appError("AUTH_FORBIDDEN", "仅管理员可操作 MCP 开关", 403);
-  }
-}
-
 async function listMcpTools(req, res, next) {
   try {
-    await ensureAdmin(req);
     const tools = await service.listMcpTools();
     res.json({ code: "OK", data: tools });
   } catch (error) {
@@ -251,7 +282,6 @@ async function listMcpTools(req, res, next) {
 
 async function toggleMcpTool(req, res, next) {
   try {
-    await ensureAdmin(req);
     const { toolName } = req.params;
     const { enabled, reason } = req.body || {};
     if (typeof enabled !== "boolean") {
@@ -266,8 +296,35 @@ async function toggleMcpTool(req, res, next) {
     res.json({
       code: "OK",
       data: {
-        toolName: tool.toolName,
-        enabled: Boolean(tool.enabled),
+        toolName: tool?.toolName,
+        enabled: Boolean(tool?.enabled),
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function toggleMcpServer(req, res, next) {
+  try {
+    const { serverName } = req.params;
+    const { enabled, reason } = req.body || {};
+    if (typeof enabled !== "boolean") {
+      throw appError("INVALID_PARAMS", "enabled 必须是布尔值", 400);
+    }
+    const result = await service.updateMcpServerToggle({
+      serverName,
+      enabled,
+      operatorId: req.auth.id,
+      reason: reason || null,
+    });
+    res.json({
+      code: "OK",
+      data: {
+        serverName: result.serverName,
+        enabled: result.enabled,
+        updatedCount: result.updatedCount,
         updatedAt: new Date().toISOString(),
       },
     });
@@ -322,10 +379,12 @@ async function deleteConversation(req, res, next) {
 module.exports = {
   generateTasks,
   executeCommand,
+  parseTicketIntent,
   chat,
   getConversationHistory,
   listConversations,
   deleteConversation,
   listMcpTools,
   toggleMcpTool,
+  toggleMcpServer,
 };

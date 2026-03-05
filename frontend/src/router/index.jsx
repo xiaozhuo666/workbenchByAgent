@@ -48,6 +48,14 @@ function AppRouter() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/tickets"
+          element={
+            <ProtectedRoute>
+              <HomePage initialTab="tickets" />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/guest" element={<HomePage isGuest={true} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

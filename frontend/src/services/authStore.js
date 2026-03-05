@@ -52,6 +52,8 @@ export async function restoreSession() {
 export async function doLogout() {
   try {
     await logout();
+  } catch (error) {
+    console.log("Logout api failed, clearing session locally");
   } finally {
     clearSession();
   }

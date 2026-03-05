@@ -55,7 +55,9 @@ async function me(req, res, next) {
 
 async function logout(req, res, next) {
   try {
-    await service.logout({ jti: req.auth.jti });
+    if (req.auth && req.auth.jti) {
+      await service.logout({ jti: req.auth.jti });
+    }
     res.status(200).json({
       code: "OK",
       message: "success",

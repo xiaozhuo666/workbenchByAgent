@@ -12,3 +12,11 @@ export async function toggleMcpTool(toolName, enabled, reason = "") {
   });
   return res.data?.data || null;
 }
+
+export async function toggleMcpServer(serverName, enabled, reason = "") {
+  const res = await httpClient.patch(
+    `/ai/mcp/servers/${encodeURIComponent(serverName)}/toggle`,
+    { enabled, reason }
+  );
+  return res.data?.data || null;
+}

@@ -131,6 +131,27 @@ class McpServerManager {
       }
     }));
   }
+
+  /**
+   * 获取所有工具（含 serverName），用于分组展示
+   */
+  getToolsWithServer() {
+    return Array.from(this.tools.values()).map(tool => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      serverName: tool.serverName,
+    }));
+  }
+
+  /**
+   * 获取某服务器下的所有工具名
+   */
+  getToolNamesByServer(serverName) {
+    return Array.from(this.tools.values())
+      .filter(t => t.serverName === serverName)
+      .map(t => t.name);
+  }
 }
 
 // 单例模式
