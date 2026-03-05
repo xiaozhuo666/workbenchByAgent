@@ -36,6 +36,7 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [ticketOpenRequest, setTicketOpenRequest] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [guestLoading, setGuestLoading] = useState(isGuest);
   const user = isGuest ? { username: "访客" } : getUser();
@@ -58,12 +59,6 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
   useEffect(() => {
     setActiveTab(initialTab || "home");
   }, [initialTab]);
-
-  useEffect(() => {
-    if (activeTab === "tickets") {
-      setShowAISidebar(false);
-    }
-  }, [activeTab]);
 
   useEffect(() => {
     if (isGuest && guestLoading) {
@@ -100,6 +95,15 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
   const handleMenuClick = ({ key }) => {
     setActiveTab(key);
     if (isMobile) setMobileMenuOpen(false);
+  };
+
+  const handleOpenTickets = ({ draftId, refine = false } = {}) => {
+    setActiveTab("tickets");
+    setTicketOpenRequest({
+      draftId: draftId || "",
+      refine: Boolean(refine),
+      requestId: Date.now(),
+    });
   };
 
   const menuItems = [
@@ -270,7 +274,7 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
       case "mcp":
         return <McpTogglePage embedded />;
       case "tickets":
-        return <TicketsPage embedded />;
+        return <TicketsPage embedded openRequest={ticketOpenRequest} />;
       case "home":
       default:
         return renderWelcome();
@@ -417,24 +421,24 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
           }
           styles={{ body: { padding: 0 } }}
         >
-          <AISidebar onDraftSaved={() => setRefreshKey(prev => prev + 1)} />
+          <AISidebar
+            onDraftSaved={() => setRefreshKey(prev => prev + 1)}
+            onOpenTickets={handleOpenTickets}
+          />
         </Drawer>
       ) : (
         <div
           style={{
-            position: "fixed",
-            right: 0,
-            top: 0,
-            width: 420,
+            width: showAISidebar ? 420 : 0,
             height: "100vh",
             background: "#fff",
             borderLeft: "1px solid var(--border-color)",
-            zIndex: 999, /* 略低于 toggle 按钮 */
+            zIndex: 20,
             boxShadow: showAISidebar ? "-10px 0 30px rgba(0,0,0,0.08)" : "none",
             display: "flex",
             flexDirection: "column",
-            transform: showAISidebar ? "translateX(0)" : "translateX(100%)",
-            transition: "transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease",
+            overflow: "hidden",
+            transition: "width 0.3s ease, box-shadow 0.3s ease",
           }}
           className="ai-fixed-panel"
         >
@@ -463,7 +467,10 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
               <Button type="text" onClick={() => setShowAISidebar(false)} icon={<RightOutlined />} />
             </div>
             <div style={{ flex: 1, overflow: "hidden" }}>
-              <AISidebar onDraftSaved={() => setRefreshKey(prev => prev + 1)} />
+              <AISidebar
+                onDraftSaved={() => setRefreshKey(prev => prev + 1)}
+                onOpenTickets={handleOpenTickets}
+              />
             </div>
           </div>
       )}

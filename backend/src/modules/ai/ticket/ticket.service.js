@@ -21,6 +21,19 @@ function toIsoDate(input) {
   return String(input).slice(0, 10);
 }
 
+function parseJsonArraySafe(input) {
+  if (Array.isArray(input)) return input;
+  if (input === null || input === undefined) return [];
+  const text = String(input).trim();
+  if (!text) return [];
+  try {
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
 function buildDraftResponse(record) {
   return {
     draftId: record.draft_id,
@@ -33,9 +46,9 @@ function buildDraftResponse(record) {
     },
     date: toIsoDate(record.travel_date),
     preferences: {
-      trainTypes: JSON.parse(record.train_types || "[]"),
+      trainTypes: parseJsonArraySafe(record.train_types),
       departureTimeRange: record.departure_time_range || "",
-      seatTypes: JSON.parse(record.seat_types || "[]"),
+      seatTypes: parseJsonArraySafe(record.seat_types),
       strategy: record.strategy || "fastest",
     },
     status: record.status,
@@ -232,6 +245,11 @@ function mapRecommendation(option, type) {
   };
   return {
     optionId: option.optionId,
+    trainNo: option.trainNo,
+    departAt: option.departAt,
+    arriveAt: option.arriveAt,
+    durationMinutes: option.durationMinutes,
+    price: option.priceMin ? `${option.priceMin} 元` : "",
     reasons: reasonByType[type],
     confidence: "medium",
     appliedFilters: {

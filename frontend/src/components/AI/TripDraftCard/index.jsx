@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 
 const { Text } = Typography;
 
-function TripDraftCard({ draft, onRefine }) {
+function TripDraftCard({ draft, onRefine, onViewResults }) {
   const navigate = useNavigate();
 
   if (!draft) return null;
@@ -23,7 +23,7 @@ function TripDraftCard({ draft, onRefine }) {
       <Space direction="vertical" size={8} style={{ width: "100%" }}>
         <Tag color="blue">来自 AI 助手</Tag>
         <Text strong>
-          <EnvironmentOutlined /> {draft.route?.fromCity} -> {draft.route?.toCity}
+          <EnvironmentOutlined /> {draft.route?.fromCity} {"->"} {draft.route?.toCity}
         </Text>
         <Text type="secondary">
           <CalendarOutlined /> {draft.date}
@@ -40,7 +40,13 @@ function TripDraftCard({ draft, onRefine }) {
           <Button
             type="primary"
             icon={<SearchOutlined />}
-            onClick={() => navigate(`/tickets?draftId=${draft.draftId}`)}
+            onClick={() => {
+              if (onViewResults) {
+                onViewResults(draft.draftId);
+                return;
+              }
+              navigate(`/tickets?draftId=${draft.draftId}`);
+            }}
           >
             查看结果
           </Button>

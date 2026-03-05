@@ -172,33 +172,95 @@ async function updateMcpToolToggle({ toolName, enabled, operatorId, reason }) {
   return toolRegistry.getTool(toolName);
 }
 
-function parseTicketDraft(text) {
+async function parseTicketIntentByAI(text, conversationHistory = []) {
   const input = String(text || "").trim();
-  const matched = input.match(/(?:查|看).*(?:从)?([\u4e00-\u9fa5]{2,8})到([\u4e00-\u9fa5]{2,8}).*(今天|明天|后天|\d{4}-\d{2}-\d{2})/);
-  if (!matched) return null;
+  if (!input) {
+    return { isTicketIntent: false, payload: null, prompt: "" };
+  }
 
-  const fromCity = matched[1];
-  const toCity = matched[2];
-  let date = matched[3];
+  const filteredHistory = [...conversationHistory];
+  if (
+    filteredHistory.length > 0
+    && filteredHistory[filteredHistory.length - 1].role === "user"
+    && filteredHistory[filteredHistory.length - 1].content === input
+  ) {
+    filteredHistory.pop();
+  }
+
   const now = dayjs();
-  if (date === "今天") date = now.format("YYYY-MM-DD");
-  if (date === "明天") date = now.add(1, "day").format("YYYY-MM-DD");
-  if (date === "后天") date = now.add(2, "day").format("YYYY-MM-DD");
+  const response = await openai.chat.completions.create({
+    model: "qwen-plus",
+    messages: [
+      {
+        role: "system",
+        content: `你是票务意图识别器。请基于用户输入判断是否是“查票/订票/余票/车次”相关意图，并提取结构化字段。
+只返回 JSON，不要输出任何解释。
 
-  const trainTypes = /高铁|动车/.test(input) ? ["G", "D"] : [];
-  return {
-    route: {
-      fromCity,
-      toCity,
-    },
-    date,
-    preferences: {
-      trainTypes,
-      departureTimeRange: "",
-      seatTypes: [],
-      strategy: "fastest",
-    },
-  };
+输出结构必须为：
+{
+  "isTicketIntent": boolean,
+  "payload": {
+    "route": { "fromCity": "", "toCity": "" },
+    "date": "",
+    "preferences": {
+      "trainTypes": [],
+      "seatTypes": [],
+      "departureTimeRange": "",
+      "strategy": "fastest"
+    }
+  } | null,
+  "prompt": ""
+}
+
+规则：
+1) 如果不是票务意图：isTicketIntent=false, payload=null, prompt=""。
+2) 如果是票务意图但信息不足：isTicketIntent=true, payload=null，并给出简短追问 prompt。
+3) 若可提取完整信息，payload.date 必须是 YYYY-MM-DD。今天/明天/后天请按当前日期换算。
+4) strategy 仅允许 "fastest"|"cheapest"|"comfortable"，默认 "fastest"。
+5) fromCity 与 toCity 不能相同；若相同，payload=null 并给出 prompt。
+6) 当前日期：${now.format("YYYY-MM-DD")}。`,
+      },
+      ...filteredHistory.slice(-3),
+      { role: "user", content: input },
+    ],
+    temperature: 0.1,
+    max_tokens: 600,
+  });
+
+  const content = response.choices[0]?.message?.content || "";
+  try {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { isTicketIntent: false, payload: null, prompt: "" };
+    const parsed = JSON.parse(jsonMatch[0]);
+    const isTicketIntent = Boolean(parsed?.isTicketIntent);
+    const payload = parsed?.payload || null;
+    const prompt = String(parsed?.prompt || "");
+
+    if (!isTicketIntent) return { isTicketIntent: false, payload: null, prompt: "" };
+    if (!payload) return { isTicketIntent: true, payload: null, prompt: prompt || "请补充出发地、到达地和日期。" };
+
+    return {
+      isTicketIntent: true,
+      payload: {
+        route: {
+          fromCity: payload?.route?.fromCity || "",
+          toCity: payload?.route?.toCity || "",
+        },
+        date: String(payload?.date || "").slice(0, 10),
+        preferences: {
+          trainTypes: Array.isArray(payload?.preferences?.trainTypes) ? payload.preferences.trainTypes : [],
+          seatTypes: Array.isArray(payload?.preferences?.seatTypes) ? payload.preferences.seatTypes : [],
+          departureTimeRange: payload?.preferences?.departureTimeRange || "",
+          strategy: ["fastest", "cheapest", "comfortable"].includes(payload?.preferences?.strategy)
+            ? payload.preferences.strategy
+            : "fastest",
+        },
+      },
+      prompt,
+    };
+  } catch (_) {
+    return { isTicketIntent: false, payload: null, prompt: "" };
+  }
 }
 
 /**
@@ -233,5 +295,5 @@ module.exports = {
   generateTitle,
   listMcpTools,
   updateMcpToolToggle,
-  parseTicketDraft,
+  parseTicketIntentByAI,
 };

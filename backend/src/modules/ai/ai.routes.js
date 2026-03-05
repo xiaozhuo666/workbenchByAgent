@@ -9,6 +9,7 @@ router.use(authMiddleware);
 
 router.post("/generate-tasks", controller.generateTasks);
 router.post("/execute-command", controller.executeCommand);
+router.post("/parse-ticket-intent", controller.parseTicketIntent);
 router.post("/chat", controller.chat);
 router.post("/ticket-drafts", ticketController.createDraft);
 router.get("/ticket-drafts/:draftId", ticketController.getDraft);

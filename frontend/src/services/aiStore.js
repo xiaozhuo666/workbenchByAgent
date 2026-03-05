@@ -11,6 +11,11 @@ class AIStore {
     return data.data;
   }
 
+  async parseTicketIntent(text, conversationId = null) {
+    const { data } = await httpClient.post("/ai/parse-ticket-intent", { text, conversationId });
+    return data.data;
+  }
+
   async chat({ text, conversationId = null, model = "qwen-plus" }) {
     const { data } = await httpClient.post("/ai/chat", { 
       text, 

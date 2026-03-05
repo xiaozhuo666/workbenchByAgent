@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Alert,
@@ -40,7 +40,7 @@ const sortOptions = [
   { label: "最低价格", value: "lowest_price" },
 ];
 
-function TicketsPage({ embedded = false }) {
+function TicketsPage({ embedded = false, openRequest = null }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -49,10 +49,38 @@ function TicketsPage({ embedded = false }) {
   const [mobileSuggestOpen, setMobileSuggestOpen] = useState(false);
   const [metaNotice, setMetaNotice] = useState("");
   const [draft, setDraft] = useState(null);
-  const [activeDraftId, setActiveDraftId] = useState(searchParams.get("draftId") || "");
+  const [activeDraftId, setActiveDraftId] = useState(embedded ? "" : (searchParams.get("draftId") || ""));
   const [sortBy, setSortBy] = useState("earliest_departure");
   const [result, setResult] = useState({ directOptions: [], transferOptions: [] });
   const [recommendations, setRecommendations] = useState({});
+  const autoLoadingDraftRef = useRef(new Set());
+  const searchInFlightRef = useRef(new Set());
+  const recommendInFlightRef = useRef(new Set());
+
+  useEffect(() => {
+    if (embedded) return;
+    const draftIdFromQuery = searchParams.get("draftId") || "";
+    if (draftIdFromQuery && draftIdFromQuery !== activeDraftId) {
+      setActiveDraftId(draftIdFromQuery);
+    }
+  }, [searchParams, activeDraftId, embedded]);
+
+  useEffect(() => {
+    if (embedded) return;
+    if (searchParams.get("refine") === "1") {
+      setMetaNotice("可继续细化偏好后重新查询，例如选择车次类型、日期与排序。");
+    }
+  }, [searchParams, embedded]);
+
+  useEffect(() => {
+    if (!embedded || !openRequest?.requestId) return;
+    if (openRequest.draftId) {
+      setActiveDraftId(openRequest.draftId);
+    }
+    if (openRequest.refine) {
+      setMetaNotice("可继续细化偏好后重新查询，例如选择车次类型、日期与排序。");
+    }
+  }, [openRequest, embedded]);
 
   const columns = useMemo(
     () => [
@@ -97,28 +125,60 @@ function TicketsPage({ embedded = false }) {
     });
   };
 
+  const normalizeTrainTypes = (trainTypes) => {
+    const merged = (trainTypes || []).flatMap((item) =>
+      String(item || "")
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean)
+    );
+    return Array.from(new Set(merged));
+  };
+
+  const buildPayloadByForm = (values) => ({
+    route: {
+      fromCity: values.fromCity,
+      toCity: values.toCity,
+    },
+    date: dayjs(values.date).format("YYYY-MM-DD"),
+    preferences: {
+      trainTypes: normalizeTrainTypes(values.trainTypes),
+      seatTypes: [],
+      departureTimeRange: "",
+      strategy: "fastest",
+    },
+  });
+
+  const isSameArray = (a = [], b = []) => {
+    if (a.length !== b.length) return false;
+    return [...a].sort().every((item, idx) => item === [...b].sort()[idx]);
+  };
+
   const ensureDraftIdByForm = async () => {
-    if (activeDraftId) return activeDraftId;
     const values = form.getFieldsValue();
     if (!values.fromCity || !values.toCity || !values.date) {
       setMetaNotice("请先填写出发地、到达地和日期");
       return "";
     }
-    const draftMeta = await createTicketDraft({
-      route: {
-        fromCity: values.fromCity,
-        toCity: values.toCity,
-      },
-      date: dayjs(values.date).format("YYYY-MM-DD"),
-      preferences: {
-        trainTypes: values.trainTypes || [],
-        seatTypes: [],
-        departureTimeRange: "",
-        strategy: "fastest",
-      },
-    });
+    const nextPayload = buildPayloadByForm(values);
+    const currentTrainTypes = normalizeTrainTypes(draft?.preferences?.trainTypes || []);
+    const nextTrainTypes = normalizeTrainTypes(nextPayload.preferences.trainTypes || []);
+    const isDraftUnchanged = Boolean(
+      activeDraftId
+      && draft
+      && draft.route?.fromCity === nextPayload.route.fromCity
+      && draft.route?.toCity === nextPayload.route.toCity
+      && String(draft.date || "") === nextPayload.date
+      && isSameArray(currentTrainTypes, nextTrainTypes)
+    );
+
+    if (isDraftUnchanged) return activeDraftId;
+
+    const draftMeta = await createTicketDraft(nextPayload);
     setActiveDraftId(draftMeta.draftId);
-    setSearchParams({ draftId: draftMeta.draftId });
+    if (!embedded) {
+      setSearchParams({ draftId: draftMeta.draftId });
+    }
     await loadDraft(draftMeta.draftId);
     return draftMeta.draftId;
   };
@@ -126,12 +186,22 @@ function TicketsPage({ embedded = false }) {
   const executeSearch = async (filtersOverride) => {
     const draftIdToUse = await ensureDraftIdByForm();
     if (!draftIdToUse) return;
+    const filters = filtersOverride || {};
+    const requestKey = JSON.stringify({
+      draftId: draftIdToUse,
+      sortBy,
+      filters,
+    });
+    if (searchInFlightRef.current.has(requestKey)) {
+      return;
+    }
+    searchInFlightRef.current.add(requestKey);
     setLoading(true);
     try {
       const data = await searchTickets({
         draftId: draftIdToUse,
         sortBy,
-        filters: filtersOverride || {},
+        filters,
       });
       setResult({
         directOptions: data.directOptions || [],
@@ -142,6 +212,7 @@ function TicketsPage({ embedded = false }) {
       setMetaNotice(error?.response?.data?.message || "暂时无法加载票务结果，请稍后重试");
       setResult({ directOptions: [], transferOptions: [] });
     } finally {
+      searchInFlightRef.current.delete(requestKey);
       setLoading(false);
     }
   };
@@ -149,6 +220,10 @@ function TicketsPage({ embedded = false }) {
   const loadRecommendations = async () => {
     const draftIdToUse = activeDraftId;
     if (!draftIdToUse) return;
+    if (recommendInFlightRef.current.has(draftIdToUse)) {
+      return;
+    }
+    recommendInFlightRef.current.add(draftIdToUse);
     setRecommendLoading(true);
     try {
       const data = await getTicketRecommendations({ draftId: draftIdToUse });
@@ -156,6 +231,7 @@ function TicketsPage({ embedded = false }) {
     } catch (_) {
       setRecommendations({});
     } finally {
+      recommendInFlightRef.current.delete(draftIdToUse);
       setRecommendLoading(false);
     }
   };
@@ -163,9 +239,17 @@ function TicketsPage({ embedded = false }) {
   useEffect(() => {
     (async () => {
       if (!activeDraftId) return;
-      await loadDraft(activeDraftId);
-      await executeSearch();
-      await loadRecommendations();
+      if (autoLoadingDraftRef.current.has(activeDraftId)) {
+        return;
+      }
+      autoLoadingDraftRef.current.add(activeDraftId);
+      try {
+        await loadDraft(activeDraftId);
+        await executeSearch();
+        await loadRecommendations();
+      } finally {
+        autoLoadingDraftRef.current.delete(activeDraftId);
+      }
     })();
   }, [activeDraftId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -191,8 +275,8 @@ function TicketsPage({ embedded = false }) {
         <div className="recommend-grid">
           {[
             ["最快方案", recommendations.fastest, "time"],
-            ["省钱方案", recommendations.cheapest, "price"],
-            ["稳妥方案", recommendations.comfortable, "safe"],
+            ["最便宜方案", recommendations.cheapest, "price"],
+            ["最舒适方案", recommendations.comfortable, "safe"],
           ].map(([label, item, mode]) => (
             <Card key={label} size="small" className={`recommend-card mode-${mode}`}>
               <div className="recommend-card__title">
@@ -282,8 +366,12 @@ function TicketsPage({ embedded = false }) {
                   mode="multiple" 
                   placeholder="如高铁"
                   options={[
-                    { label: "高铁/动车", value: "G,D,C" },
-                    { label: "普通列车", value: "Z,T,K" }
+                    { label: "高铁", value: "G" },
+                    { label: "动车", value: "D" },
+                    { label: "城际", value: "C" },
+                    { label: "直达", value: "Z" },
+                    { label: "特快", value: "T" },
+                    { label: "快速", value: "K" }
                   ]} 
                   style={{ borderRadius: 8 }}
                 />
@@ -315,11 +403,6 @@ function TicketsPage({ embedded = false }) {
       {metaNotice ? (
         <Alert type="warning" showIcon message={metaNotice} style={{ marginBottom: 12 }} />
       ) : null}
-
-      <div className="stats-strip">
-        <div className="stat-pill"><span>直达候选</span><b>{result.directOptions.length}</b></div>
-        <div className="stat-pill"><span>中转候选</span><b>{result.transferOptions.length}</b></div>
-      </div>
 
       <div className="tickets-page__list">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>

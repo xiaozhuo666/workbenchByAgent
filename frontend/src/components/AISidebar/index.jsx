@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Input, Button, List, Card, Badge, Typography, Space, message, Spin, Tooltip, Drawer, Divider, Tag, Avatar } from "antd";
+import { Input, Button, List, Card, Badge, Typography, Space, message, Spin, Tooltip, Drawer, Divider, Tag, Avatar, Modal, Form, Select } from "antd";
 import { 
   SendOutlined, RobotOutlined, UserOutlined, PlusOutlined, 
   CheckCircleOutlined, DeleteOutlined, HistoryOutlined,
@@ -16,10 +16,12 @@ import ModelSelector from "../AI/ModelSelector";
 import TripDraftCard from "../AI/TripDraftCard";
 import { exportToMarkdown } from "../../utils/exportUtils";
 import dayjs from "dayjs";
+import { useNavigate } from "react-router-dom";
 
 const { Text, Title, Paragraph } = Typography;
 
-const AISidebar = ({ onDraftSaved }) => {
+const AISidebar = ({ onDraftSaved, onOpenTickets }) => {
+  const navigate = useNavigate();
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState([
     { role: "assistant", content: "你好！我是你的 AI 助手。我可以帮你创建任务、批量操作、或者自由对话。有什么需要吗？" }
@@ -30,6 +32,10 @@ const AISidebar = ({ onDraftSaved }) => {
   const [model, setModel] = useState(() => localStorage.getItem("ai_model") || "qwen-plus");
   const [showHistory, setShowHistory] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [hoveredMsgIndex, setHoveredMsgIndex] = useState(-1);
+  const [refineModalOpen, setRefineModalOpen] = useState(false);
+  const [refineDraft, setRefineDraft] = useState(null);
+  const [refineForm] = Form.useForm();
   
   const scrollRef = useRef(null);
 
@@ -79,29 +85,6 @@ const AISidebar = ({ onDraftSaved }) => {
   /**
    * Process sending a message (supports streaming)
    */
-  const parseTicketDraftInput = (text) => {
-    const input = String(text || "").trim();
-    const matched = input.match(/(?:查|看).*(?:从)?([\u4e00-\u9fa5]{2,8})到([\u4e00-\u9fa5]{2,8}).*(今天|明天|后天|\d{4}-\d{2}-\d{2})/);
-    if (!matched) return null;
-    const fromCity = matched[1];
-    const toCity = matched[2];
-    let date = matched[3];
-    const now = dayjs();
-    if (date === "今天") date = now.format("YYYY-MM-DD");
-    if (date === "明天") date = now.add(1, "day").format("YYYY-MM-DD");
-    if (date === "后天") date = now.add(2, "day").format("YYYY-MM-DD");
-    return {
-      route: { fromCity, toCity },
-      date,
-      preferences: {
-        trainTypes: /高铁|动车/.test(input) ? ["G", "D"] : [],
-        seatTypes: [],
-        departureTimeRange: "",
-        strategy: "fastest",
-      },
-    };
-  };
-
   const processSend = async (text) => {
     if (!text || !text.trim()) return;
     
@@ -112,16 +95,33 @@ const AISidebar = ({ onDraftSaved }) => {
     setLoading(true);
 
     try {
-      const ticketDraftPayload = parseTicketDraftInput(text);
-      if (ticketDraftPayload) {
-        const draftMeta = await createTicketDraft(ticketDraftPayload);
+      let ticketDraftParsed = { isTicketIntent: false, payload: null, prompt: "" };
+      try {
+        ticketDraftParsed = await aiStore.parseTicketIntent(text, conversationId);
+      } catch (_) {
+        ticketDraftParsed = { isTicketIntent: false, payload: null, prompt: "" };
+      }
+      if (ticketDraftParsed.isTicketIntent && !ticketDraftParsed.payload) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: ticketDraftParsed.prompt || "请补充行程信息，我来帮你查票。",
+          },
+        ]);
+        setLoading(false);
+        return;
+      }
+
+      if (ticketDraftParsed.payload) {
+        const draftMeta = await createTicketDraft(ticketDraftParsed.payload);
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
             content: "已为你生成行程卡，你可以直接查看结果或继续细化条件。",
             ticketDraft: {
-              ...ticketDraftPayload,
+              ...ticketDraftParsed.payload,
               draftId: draftMeta.draftId,
               status: draftMeta.status,
               expiresAt: draftMeta.expiresAt,
@@ -230,6 +230,57 @@ const AISidebar = ({ onDraftSaved }) => {
     message.success("内容已导出");
   };
 
+  const handleOpenRefineModal = (draft) => {
+    if (!draft) return;
+    setRefineDraft(draft);
+    refineForm.setFieldsValue({
+      strategy: draft.preferences?.strategy || "fastest",
+      trainTypes: draft.preferences?.trainTypes || [],
+      seatTypes: draft.preferences?.seatTypes || [],
+    });
+    setRefineModalOpen(true);
+  };
+
+  const handleConfirmRefine = async () => {
+    if (!refineDraft) return;
+    try {
+      const values = await refineForm.validateFields();
+      const payload = {
+        route: {
+          fromCity: refineDraft.route?.fromCity,
+          toCity: refineDraft.route?.toCity,
+        },
+        date: refineDraft.date,
+        preferences: {
+          strategy: values.strategy || "fastest",
+          trainTypes: values.trainTypes || [],
+          seatTypes: values.seatTypes || [],
+          departureTimeRange: "",
+        },
+      };
+      const draftMeta = await createTicketDraft(payload);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "已根据你的细化条件生成新行程卡，可继续查看结果。",
+          ticketDraft: {
+            ...payload,
+            draftId: draftMeta.draftId,
+            status: draftMeta.status,
+            expiresAt: draftMeta.expiresAt,
+          },
+        },
+      ]);
+      setRefineModalOpen(false);
+      setRefineDraft(null);
+      message.success("细化完成");
+    } catch (error) {
+      if (error?.errorFields) return;
+      message.error("细化失败，请稍后重试");
+    }
+  };
+
   /**
    * 保存所有解析出的任务
    */
@@ -331,7 +382,15 @@ const AISidebar = ({ onDraftSaved }) => {
       >
         {messages.map((msg, index) => (
           <div key={index} style={{ marginBottom: 20, textAlign: msg.role === "user" ? "right" : "left" }}>
-            <Space direction="vertical" style={{ maxWidth: "90%", textAlign: "left" }}>
+            <div
+              style={{ maxWidth: "90%", textAlign: "left", display: "inline-block", position: "relative" }}
+              onMouseEnter={() => {
+                if (msg.role === "assistant") setHoveredMsgIndex(index);
+              }}
+              onMouseLeave={() => {
+                if (msg.role === "assistant") setHoveredMsgIndex(-1);
+              }}
+            >
               <div style={{ display: "flex", alignItems: "center", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", gap: 8, marginBottom: 4 }}>
                 {msg.role === "assistant" && <Avatar size="small" icon={<RobotOutlined />} style={{ background: "var(--primary-color, #0EA5E9)" }} />}
                 <Text type="secondary" style={{ fontSize: 12 }}>{msg.role === "user" ? "你" : "AI 助手"}</Text>
@@ -346,7 +405,7 @@ const AISidebar = ({ onDraftSaved }) => {
                   background: msg.role === "user" ? "linear-gradient(135deg, #0EA5E9 0%, #2563EB 100%)" : "#fff",
                   color: msg.role === "user" ? "#fff" : "var(--text-main)",
                   border: msg.role === "user" ? "none" : "1px solid #F1F5F9",
-                  boxShadow: msg.role === "user" ? "0 4px 12px rgba(14, 165, 233, 0.2)" : "0 2px 8px rgba(0,0,0,0.02)"
+                  boxShadow: msg.role === "user" ? "0 4px 12px rgba(14, 165, 233, 0.2)" : "0 2px 8px rgba(0,0,0,0.02)",
                 }}
                 className="message-bubble"
               >
@@ -361,7 +420,7 @@ const AISidebar = ({ onDraftSaved }) => {
                 >
                   {msg.content}
                 </div>
-                
+
                 {index === 0 && msg.role === "assistant" && (
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #f0f0f0" }}>
                     <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>你可以试着这样说：</Text>
@@ -427,20 +486,6 @@ const AISidebar = ({ onDraftSaved }) => {
                   </div>
                 )}
                 
-                {msg.role === "assistant" && !msg.isStreaming && msg.content && (
-                  <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end", borderTop: "1px solid #f0f0f0", paddingTop: 8 }}>
-                    <Tooltip title="导出为 Markdown">
-                      <Button 
-                        type="text" 
-                        size="small" 
-                        icon={<DownloadOutlined />} 
-                        onClick={() => handleExport(msg)}
-                        style={{ color: "#8c8c8c" }}
-                      />
-                    </Tooltip>
-                  </div>
-                )}
-
                 {msg.drafts && msg.drafts.length > 0 && (
                   <div style={{ marginTop: 12, borderTop: "1px solid #f0f0f0", paddingTop: 8 }}>
                     <List
@@ -479,13 +524,41 @@ const AISidebar = ({ onDraftSaved }) => {
                 {msg.ticketDraft && (
                   <TripDraftCard
                     draft={msg.ticketDraft}
+                    onViewResults={(draftId) => {
+                      const targetDraftId = draftId || msg.ticketDraft.draftId;
+                      if (onOpenTickets) {
+                        onOpenTickets({ draftId: targetDraftId, refine: false });
+                      } else {
+                        navigate(`/tickets?draftId=${targetDraftId}`);
+                      }
+                      message.success("已打开票务页，正在查看结果");
+                    }}
                     onRefine={() => {
-                      message.info("请继续描述偏好，例如：最早出发、最短耗时、二等座。");
+                      handleOpenRefineModal(msg.ticketDraft);
                     }}
                   />
                 )}
               </Card>
-            </Space>
+              {msg.role === "assistant" && !msg.isStreaming && msg.content && hoveredMsgIndex === index && (
+                <div style={{ position: "absolute", top: -2, right: 0 }}>
+                  <Tooltip title="导出为 Markdown">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<DownloadOutlined />}
+                      onClick={() => handleExport(msg)}
+                      style={{
+                        color: "#8c8c8c",
+                        background: "#fff",
+                        border: "1px solid #f0f0f0",
+                        borderRadius: 8,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                      }}
+                    />
+                  </Tooltip>
+                </div>
+              )}
+            </div>
           </div>
         ))}
         {loading && !isStreaming && (
@@ -507,6 +580,49 @@ const AISidebar = ({ onDraftSaved }) => {
           onDraftSaved && onDraftSaved();
         }}
       />
+
+      <Modal
+        title="继续细化行程"
+        open={refineModalOpen}
+        onCancel={() => setRefineModalOpen(false)}
+        onOk={handleConfirmRefine}
+        okText="生成新行程卡"
+        cancelText="取消"
+      >
+        <Form form={refineForm} layout="vertical">
+          <Form.Item label="偏好策略" name="strategy" rules={[{ required: true, message: "请选择偏好策略" }]}>
+            <Select
+              options={[
+                { label: "最快到达", value: "fastest" },
+                { label: "最便宜", value: "cheapest" },
+                { label: "最舒适", value: "comfortable" },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item label="车次类型" name="trainTypes">
+            <Select
+              mode="multiple"
+              options={[
+                { label: "高铁/动车", value: "G" },
+                { label: "城际", value: "C" },
+                { label: "直达/特快/快速", value: "Z" },
+                { label: "特快", value: "T" },
+                { label: "快速", value: "K" },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item label="席别偏好" name="seatTypes">
+            <Select
+              mode="multiple"
+              options={[
+                { label: "二等座", value: "二等座" },
+                { label: "一等座", value: "一等座" },
+                { label: "商务座", value: "商务座" },
+              ]}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* Input Area */}
       <div style={{ padding: 16, background: "#fff", borderTop: "1px solid #f0f0f0" }}>

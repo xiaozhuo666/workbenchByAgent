@@ -124,6 +124,24 @@ async function executeCommand(req, res, next) {
   }
 }
 
+async function parseTicketIntent(req, res, next) {
+  try {
+    const { text, conversationId } = req.body || {};
+    if (!text) throw new Error("请输入内容");
+
+    let historyMessages = [];
+    if (conversationId) {
+      const history = await repository.getConversationHistory(req.auth.id, conversationId);
+      historyMessages = history.map((h) => ({ role: h.role, content: h.content }));
+    }
+
+    const parsed = await service.parseTicketIntentByAI(text, historyMessages);
+    res.json({ code: "OK", data: parsed });
+  } catch (error) {
+    next(error);
+  }
+}
+
 /**
  * Chat with AI (supports sessions and streaming)
  */
@@ -148,7 +166,7 @@ async function chat(req, res, next) {
     const finalHistory = await repository.getConversationHistory(req.auth.id, cid);
     const messages = finalHistory.map(h => ({ role: h.role, content: h.content }));
 
-    const parsedDraft = service.parseTicketDraft(text);
+    const parsedTicketIntent = await service.parseTicketIntentByAI(text, messages.slice(0, -1));
 
     // 3. Handle Streaming vs Single Reply
     if (stream) {
@@ -206,13 +224,13 @@ async function chat(req, res, next) {
       res.write("data: [DONE]\n\n");
       res.end();
     } else {
-      if (parsedDraft) {
+      if (parsedTicketIntent?.payload) {
         const draft = await ticketService.createDraft({
           userId: req.auth.id,
           source: "ai_assistant",
-          route: parsedDraft.route,
-          date: parsedDraft.date,
-          preferences: parsedDraft.preferences,
+          route: parsedTicketIntent.payload.route,
+          date: parsedTicketIntent.payload.date,
+          preferences: parsedTicketIntent.payload.preferences,
         });
         const draftPayload = await ticketService.getDraftOrThrow({
           userId: req.auth.id,
@@ -349,6 +367,7 @@ async function deleteConversation(req, res, next) {
 module.exports = {
   generateTasks,
   executeCommand,
+  parseTicketIntent,
   chat,
   getConversationHistory,
   listConversations,

@@ -49,32 +49,6 @@
   margin-bottom: 8px;
 }
 
-.stats-strip {
-  display: flex !important;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-
-.stat-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid #e7e5e4;
-  background: #fff;
-  color: #78716c;
-  font-size: 13px;
-  line-height: 1;
-}
-
-.stat-pill b {
-  color: #1c1917;
-  font-weight: 600;
-  font-size: 13px;
-}
-
 .tickets-page__layout {
   display: flex;
   align-items: flex-start;
