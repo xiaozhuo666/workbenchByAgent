@@ -172,16 +172,6 @@ async function updateMcpToolToggle({ toolName, enabled, operatorId, reason }) {
   return toolRegistry.getTool(toolName);
 }
 
-async function updateMcpServerToggle({ serverName, enabled, operatorId, reason }) {
-  const count = await toolRegistry.updateServerToggle({
-    serverName,
-    enabled,
-    operatorId,
-    reason,
-  });
-  return { serverName, enabled, updatedCount: count };
-}
-
 async function parseTicketIntentByAI(text, conversationHistory = []) {
   const input = String(text || "").trim();
   if (!input) {
@@ -305,6 +295,5 @@ module.exports = {
   generateTitle,
   listMcpTools,
   updateMcpToolToggle,
-  updateMcpServerToggle,
   parseTicketIntentByAI,
 };
