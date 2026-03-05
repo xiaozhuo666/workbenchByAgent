@@ -236,10 +236,15 @@ docker compose down -v
   docker compose --env-file .env.docker up -d --build backend
   ```
 
-### 12.3 MySQL 初始化脚本未生效
+### 12.3 MySQL 初始化与迁移
 
-- `backend/scripts/migrate.sql` 只在数据库卷首次初始化时执行。
-- 若要重跑（会清空数据）：
+- **首次建库**：`backend/scripts/migrate.sql` 仅在数据库卷首次初始化时执行（如 Docker 首次 up 时挂载的 mysql 数据卷）。
+- **每次启动自动迁移**：后端启动时会执行 `backend/src/db/migrations/` 下尚未执行过的 `.sql` 文件（按文件名顺序），并写入 `schema_migrations` 表，无需手动跑 SQL。代码更新后重启 backend 即可带上最新表结构（如 `ticket_drafts`、`ticket_query_logs` 等）。
+- 若出现类似 `Table 'ai_workbench.ticket_drafts' doesn't exist`：先拉取最新代码，再重启后端：
+  ```bash
+  docker compose --env-file .env.docker up -d --build backend
+  ```
+- 若要完全重做数据库（会清空数据）：
   ```bash
   docker compose down -v
   docker compose --env-file .env.docker up -d --build
