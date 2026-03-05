@@ -1,7 +1,6 @@
 const { getMcpConfig } = require("../../../config/mcp");
 const { TOOL_ERROR_CODES, ToolExecutionError } = require("./tool.errors");
 const mcpManager = require("./mcpServerManager");
-const { ensureCoreServersRegistered } = require("./serverBootstrap");
 const { normalizeWhitelist, isToolWhitelisted } = require("./whitelist");
 const toggleRepository = require("./toggle.repository");
 
@@ -20,29 +19,23 @@ async function refreshToggleCacheIfNeeded() {
 }
 
 /**
- * 获取所有可用工具（包含动态发现的 MCP 工具），带 serverName 便于前端按类分组
+ * 获取所有可用工具（包含动态发现的 MCP 工具）
  */
 async function listTools() {
-  await ensureCoreServersRegistered();
   await refreshToggleCacheIfNeeded();
-  const allTools = mcpManager.getToolsWithServer();
+  const allTools = mcpManager.getOpenAiTools();
   
   return allTools.map((t) => {
-    const toolName = t.name;
+    const toolName = t.function.name;
     const isEnabled = toggleCacheMap.has(toolName) ? toggleCacheMap.get(toolName) : true;
+    
     return {
       toolName,
       displayName: toolName,
-      description: t.description,
+      description: t.function.description,
       enabled: isEnabled,
-      serverName: t.serverName,
     };
   });
-}
-
-async function getTool(toolName) {
-  const tools = await listTools();
-  return tools.find((item) => item.toolName === toolName) || null;
 }
 
 async function assertToolAllowed(toolName) {
@@ -85,18 +78,8 @@ async function updateToolToggle({ toolName, enabled, operatorId, reason }) {
   cacheExpiresAt = 0;
 }
 
-async function updateServerToggle({ serverName, enabled, operatorId, reason }) {
-  const toolNames = mcpManager.getToolNamesByServer(serverName);
-  for (const toolName of toolNames) {
-    await updateToolToggle({ toolName, enabled, operatorId, reason });
-  }
-  return toolNames.length;
-}
-
 module.exports = {
   listTools,
-  getTool,
   assertToolAllowed,
   updateToolToggle,
-  updateServerToggle,
 };

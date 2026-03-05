@@ -375,7 +375,7 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
         </div>
 
         <Content style={{ position: 'relative', overflowY: 'auto' }}>
-          <div className={`main-content ${activeTab === "tickets" || activeTab === "mcp" ? "main-content--wide" : ""}`}>
+          <div className={`main-content ${activeTab === "tickets" ? "main-content--tickets" : ""}`}>
             {renderContent()}
           </div>
 

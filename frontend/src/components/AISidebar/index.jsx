@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Input, Button, List, Card, Badge, Typography, Space, message, Spin, Tooltip, Drawer, Divider, Tag, Avatar, Modal, Form, Select } from "antd";
 import { 
   SendOutlined, RobotOutlined, UserOutlined, PlusOutlined, 
@@ -472,15 +474,110 @@ const AISidebar = ({ onDraftSaved, onOpenTickets }) => {
                 className="message-bubble"
               >
                 <div
+                  className="message-markdown"
                   style={{
-                    whiteSpace: "pre-wrap",
                     fontSize: 14,
                     lineHeight: 1.6,
                     wordBreak: "break-word",
                     overflowWrap: "anywhere",
                   }}
                 >
-                  {msg.content}
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      p: ({ node, ...props }) => <p style={{ margin: "0 0 8px 0" }} {...props} />,
+                      h1: ({ node, ...props }) => <h1 style={{ fontSize: 18, margin: "12px 0 6px 0", fontWeight: 600 }} {...props} />,
+                      h2: ({ node, ...props }) => <h2 style={{ fontSize: 16, margin: "10px 0 4px 0", fontWeight: 600 }} {...props} />,
+                      h3: ({ node, ...props }) => <h3 style={{ fontSize: 15, margin: "8px 0 4px 0", fontWeight: 600 }} {...props} />,
+                      ul: ({ node, ...props }) => <ul style={{ margin: "4px 0", paddingLeft: 20 }} {...props} />,
+                      ol: ({ node, ...props }) => <ol style={{ margin: "4px 0", paddingLeft: 20 }} {...props} />,
+                      li: ({ node, ...props }) => <li style={{ marginBottom: 2 }} {...props} />,
+                      code: ({ node, inline, className, children, ...props }) =>
+                        inline ? (
+                          <code
+                            style={{
+                              background: msg.role === "user" ? "rgba(255,255,255,0.2)" : "#f0f0f0",
+                              padding: "2px 6px",
+                              borderRadius: 4,
+                              fontSize: "0.9em",
+                            }}
+                            {...props}
+                          >
+                            {children}
+                          </code>
+                        ) : (
+                          <code
+                            className={className}
+                            style={{
+                              display: "block",
+                              background: msg.role === "user" ? "rgba(0,0,0,0.15)" : "#f5f5f5",
+                              padding: 12,
+                              borderRadius: 8,
+                              overflow: "auto",
+                              fontSize: 13,
+                              margin: "8px 0",
+                              border: msg.role === "user" ? "none" : "1px solid #e8e8e8",
+                            }}
+                            {...props}
+                          >
+                            {children}
+                          </code>
+                        ),
+                      pre: ({ node, ...props }) => (
+                        <pre style={{ margin: "8px 0", background: "transparent", padding: 0 }} {...props} />
+                      ),
+                      a: ({ node, ...props }) => (
+                        <a
+                          {...props}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            color: msg.role === "user" ? "rgba(255,255,255,0.95)" : "#0EA5E9",
+                            textDecoration: "underline",
+                          }}
+                        />
+                      ),
+                      strong: ({ node, ...props }) => <strong {...props} />,
+                      blockquote: ({ node, ...props }) => (
+                        <blockquote
+                          style={{
+                            margin: "8px 0",
+                            paddingLeft: 12,
+                            borderLeft: `3px solid ${msg.role === "user" ? "rgba(255,255,255,0.5)" : "#d9d9d9"}`,
+                            opacity: 0.95,
+                          }}
+                          {...props}
+                        />
+                      ),
+                      table: ({ node, ...props }) => (
+                        <div style={{ overflowX: "auto", margin: "8px 0" }}>
+                          <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 13 }} {...props} />
+                        </div>
+                      ),
+                      th: ({ node, ...props }) => (
+                        <th
+                          style={{
+                            border: `1px solid ${msg.role === "user" ? "rgba(255,255,255,0.3)" : "#e8e8e8"}`,
+                            padding: "6px 10px",
+                            textAlign: "left",
+                            background: msg.role === "user" ? "rgba(255,255,255,0.1)" : "#fafafa",
+                          }}
+                          {...props}
+                        />
+                      ),
+                      td: ({ node, ...props }) => (
+                        <td
+                          style={{
+                            border: `1px solid ${msg.role === "user" ? "rgba(255,255,255,0.2)" : "#e8e8e8"}`,
+                            padding: "6px 10px",
+                          }}
+                          {...props}
+                        />
+                      ),
+                    }}
+                  >
+                    {msg.content || ""}
+                  </ReactMarkdown>
                 </div>
 
                 {index === 0 && msg.role === "assistant" && (

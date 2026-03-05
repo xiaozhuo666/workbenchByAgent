@@ -4,6 +4,7 @@ const ticketService = require("./ticket/ticket.service");
 const { v4: uuidv4 } = require("uuid");
 const env = require("../../config/env");
 const { appError } = require("../../middleware/errorHandler");
+const authRepository = require("../auth/auth.repository");
 
 async function ensureConversation(userId, conversationId, firstText, model) {
   let cid = conversationId;
@@ -271,8 +272,21 @@ async function chat(req, res, next) {
   }
 }
 
+async function ensureAdmin(req) {
+  const userId = Number(req.auth?.id);
+  let allow = env.mcp.adminUserIds.includes(userId);
+  if (!allow) {
+    const user = await authRepository.findById(userId);
+    allow = user?.username === "system";
+  }
+  if (!allow) {
+    throw appError("AUTH_FORBIDDEN", "仅管理员可操作 MCP 开关", 403);
+  }
+}
+
 async function listMcpTools(req, res, next) {
   try {
+    await ensureAdmin(req);
     const tools = await service.listMcpTools();
     res.json({ code: "OK", data: tools });
   } catch (error) {
@@ -282,6 +296,7 @@ async function listMcpTools(req, res, next) {
 
 async function toggleMcpTool(req, res, next) {
   try {
+    await ensureAdmin(req);
     const { toolName } = req.params;
     const { enabled, reason } = req.body || {};
     if (typeof enabled !== "boolean") {
@@ -296,35 +311,8 @@ async function toggleMcpTool(req, res, next) {
     res.json({
       code: "OK",
       data: {
-        toolName: tool?.toolName,
-        enabled: Boolean(tool?.enabled),
-        updatedAt: new Date().toISOString(),
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-}
-
-async function toggleMcpServer(req, res, next) {
-  try {
-    const { serverName } = req.params;
-    const { enabled, reason } = req.body || {};
-    if (typeof enabled !== "boolean") {
-      throw appError("INVALID_PARAMS", "enabled 必须是布尔值", 400);
-    }
-    const result = await service.updateMcpServerToggle({
-      serverName,
-      enabled,
-      operatorId: req.auth.id,
-      reason: reason || null,
-    });
-    res.json({
-      code: "OK",
-      data: {
-        serverName: result.serverName,
-        enabled: result.enabled,
-        updatedCount: result.updatedCount,
+        toolName: tool.toolName,
+        enabled: Boolean(tool.enabled),
         updatedAt: new Date().toISOString(),
       },
     });
@@ -386,5 +374,4 @@ module.exports = {
   deleteConversation,
   listMcpTools,
   toggleMcpTool,
-  toggleMcpServer,
 };
