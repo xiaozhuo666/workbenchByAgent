@@ -5,7 +5,13 @@ import { useNavigate } from "react-router-dom";
 
 const { Text } = Typography;
 
-function TripDraftCard({ draft, onRefine, onViewResults }) {
+function TripDraftCard({
+  draft,
+  onRefine,
+  onViewResults,
+  viewLoading = false,
+  viewDisabled = false,
+}) {
   const navigate = useNavigate();
 
   if (!draft) return null;
@@ -40,6 +46,8 @@ function TripDraftCard({ draft, onRefine, onViewResults }) {
           <Button
             type="primary"
             icon={<SearchOutlined />}
+            loading={viewLoading}
+            disabled={viewDisabled}
             onClick={() => {
               if (onViewResults) {
                 onViewResults(draft.draftId);

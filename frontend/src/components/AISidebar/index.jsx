@@ -9,7 +9,12 @@ import {
 import aiStore from "../../services/aiStore";
 import { getTodos, batchUpdateTodoStatus, createTodo } from "../../api/todoApi";
 import { createSchedule } from "../../api/scheduleApi";
-import { createTicketDraft } from "../../api/ticketApi";
+import {
+  createTicketDraft,
+  getTicketDraft,
+  getTicketRecommendations,
+  searchTickets,
+} from "../../api/ticketApi";
 import AIConfirmationModal from "../AIConfirmationModal";
 import ConversationList from "../AI/ConversationList";
 import ModelSelector from "../AI/ModelSelector";
@@ -33,6 +38,7 @@ const AISidebar = ({ onDraftSaved, onOpenTickets }) => {
   const [showHistory, setShowHistory] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [hoveredMsgIndex, setHoveredMsgIndex] = useState(-1);
+  const [ticketOpenStateMap, setTicketOpenStateMap] = useState({});
   const [refineModalOpen, setRefineModalOpen] = useState(false);
   const [refineDraft, setRefineDraft] = useState(null);
   const [refineForm] = Form.useForm();
@@ -115,6 +121,7 @@ const AISidebar = ({ onDraftSaved, onOpenTickets }) => {
 
       if (ticketDraftParsed.payload) {
         const draftMeta = await createTicketDraft(ticketDraftParsed.payload);
+        preloadTicketResult(draftMeta.draftId);
         setMessages((prev) => [
           ...prev,
           {
@@ -230,6 +237,60 @@ const AISidebar = ({ onDraftSaved, onOpenTickets }) => {
     message.success("内容已导出");
   };
 
+  const preloadTicketResult = useCallback(async (draftId) => {
+    if (!draftId) return null;
+    const state = ticketOpenStateMap[draftId];
+    if (state?.loading || state?.ready) {
+      return state?.preloaded || null;
+    }
+
+    setTicketOpenStateMap((prev) => ({
+      ...prev,
+      [draftId]: { loading: true, ready: false, preloaded: null, error: "" },
+    }));
+
+    try {
+      const [draftData, searchData, recommendData] = await Promise.all([
+        getTicketDraft(draftId),
+        searchTickets({
+          draftId,
+          sortBy: "earliest_departure",
+          filters: {},
+        }),
+        getTicketRecommendations({ draftId }),
+      ]);
+      const preloaded = {
+        draft: draftData,
+        result: {
+          directOptions: searchData?.directOptions || [],
+          transferOptions: searchData?.transferOptions || [],
+        },
+        recommendations: recommendData || {},
+        metaNotice: searchData?.meta?.notice || "",
+      };
+      setTicketOpenStateMap((prev) => ({
+        ...prev,
+        [draftId]: { loading: false, ready: true, preloaded, error: "" },
+      }));
+      return preloaded;
+    } catch (_) {
+      setTicketOpenStateMap((prev) => ({
+        ...prev,
+        [draftId]: { loading: false, ready: false, preloaded: null, error: "加载失败" },
+      }));
+      return null;
+    }
+  }, [ticketOpenStateMap]);
+
+  useEffect(() => {
+    messages.forEach((msg) => {
+      const draftId = msg?.ticketDraft?.draftId;
+      if (draftId && !ticketOpenStateMap[draftId]) {
+        preloadTicketResult(draftId);
+      }
+    });
+  }, [messages, ticketOpenStateMap, preloadTicketResult]);
+
   const handleOpenRefineModal = (draft) => {
     if (!draft) return;
     setRefineDraft(draft);
@@ -259,6 +320,7 @@ const AISidebar = ({ onDraftSaved, onOpenTickets }) => {
         },
       };
       const draftMeta = await createTicketDraft(payload);
+      preloadTicketResult(draftMeta.draftId);
       setMessages((prev) => [
         ...prev,
         {
@@ -524,14 +586,25 @@ const AISidebar = ({ onDraftSaved, onOpenTickets }) => {
                 {msg.ticketDraft && (
                   <TripDraftCard
                     draft={msg.ticketDraft}
+                    viewLoading={Boolean(ticketOpenStateMap[msg.ticketDraft.draftId]?.loading)}
+                    viewDisabled={!ticketOpenStateMap[msg.ticketDraft.draftId]?.ready}
                     onViewResults={(draftId) => {
                       const targetDraftId = draftId || msg.ticketDraft.draftId;
+                      const state = ticketOpenStateMap[targetDraftId];
+                      if (!state?.ready || !state.preloaded) {
+                        message.info("结果还在准备中，请稍候");
+                        return;
+                      }
                       if (onOpenTickets) {
-                        onOpenTickets({ draftId: targetDraftId, refine: false });
+                        onOpenTickets({
+                          draftId: targetDraftId,
+                          refine: false,
+                          preloaded: state.preloaded,
+                        });
                       } else {
                         navigate(`/tickets?draftId=${targetDraftId}`);
                       }
-                      message.success("已打开票务页，正在查看结果");
+                      message.success("已打开票务结果");
                     }}
                     onRefine={() => {
                       handleOpenRefineModal(msg.ticketDraft);

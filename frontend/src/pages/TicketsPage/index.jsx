@@ -56,6 +56,7 @@ function TicketsPage({ embedded = false, openRequest = null }) {
   const autoLoadingDraftRef = useRef(new Set());
   const searchInFlightRef = useRef(new Set());
   const recommendInFlightRef = useRef(new Set());
+  const preloadedDraftIdRef = useRef("");
 
   useEffect(() => {
     if (embedded) return;
@@ -77,16 +78,47 @@ function TicketsPage({ embedded = false, openRequest = null }) {
     if (openRequest.draftId) {
       setActiveDraftId(openRequest.draftId);
     }
+    if (openRequest.preloaded) {
+      const preloaded = openRequest.preloaded;
+      if (preloaded.draft) {
+        setDraft(preloaded.draft);
+        form.setFieldsValue({
+          fromCity: preloaded.draft.route?.fromCity,
+          toCity: preloaded.draft.route?.toCity,
+          date: preloaded.draft.date ? dayjs(preloaded.draft.date) : null,
+          trainTypes: preloaded.draft.preferences?.trainTypes || [],
+        });
+      }
+      if (preloaded.result) {
+        setResult({
+          directOptions: preloaded.result.directOptions || [],
+          transferOptions: preloaded.result.transferOptions || [],
+        });
+      }
+      setRecommendations(preloaded.recommendations || {});
+      setMetaNotice(preloaded.metaNotice || "");
+      preloadedDraftIdRef.current = openRequest.draftId || "";
+    }
     if (openRequest.refine) {
       setMetaNotice("可继续细化偏好后重新查询，例如选择车次类型、日期与排序。");
     }
-  }, [openRequest, embedded]);
+  }, [openRequest, embedded, form]);
 
   const columns = useMemo(
     () => [
       { title: "车次", dataIndex: "trainNo", key: "trainNo", width: 120 },
-      { title: "出发", dataIndex: "departAt", key: "departAt", width: 160 },
-      { title: "到达", dataIndex: "arriveAt", key: "arriveAt", width: 160 },
+      {
+        title: `出发${draft?.route?.fromCity ? `(${draft.route.fromCity})` : "(出发地)"}`,
+        dataIndex: "departAt",
+        key: "departAt",
+        width: 180,
+      },
+      {
+        title: `到达${draft?.route?.toCity ? `(${draft.route.toCity})` : "(到达地)"}`,
+        dataIndex: "arriveAt",
+        key: "arriveAt",
+        width: 180,
+      },
       {
         title: "耗时(分钟)",
         dataIndex: "durationMinutes",
@@ -110,7 +142,7 @@ function TicketsPage({ embedded = false, openRequest = null }) {
           )),
       },
     ],
-    []
+    [draft?.route?.fromCity, draft?.route?.toCity]
   );
 
   const loadDraft = async (targetDraftId) => {
@@ -208,6 +240,7 @@ function TicketsPage({ embedded = false, openRequest = null }) {
         transferOptions: data.transferOptions || [],
       });
       setMetaNotice(data.meta?.notice || "");
+      await loadRecommendations(draftIdToUse);
     } catch (error) {
       setMetaNotice(error?.response?.data?.message || "暂时无法加载票务结果，请稍后重试");
       setResult({ directOptions: [], transferOptions: [] });
@@ -217,8 +250,8 @@ function TicketsPage({ embedded = false, openRequest = null }) {
     }
   };
 
-  const loadRecommendations = async () => {
-    const draftIdToUse = activeDraftId;
+  const loadRecommendations = async (draftIdParam) => {
+    const draftIdToUse = draftIdParam || activeDraftId;
     if (!draftIdToUse) return;
     if (recommendInFlightRef.current.has(draftIdToUse)) {
       return;
@@ -242,11 +275,14 @@ function TicketsPage({ embedded = false, openRequest = null }) {
       if (autoLoadingDraftRef.current.has(activeDraftId)) {
         return;
       }
+      if (preloadedDraftIdRef.current === activeDraftId) {
+        preloadedDraftIdRef.current = "";
+        return;
+      }
       autoLoadingDraftRef.current.add(activeDraftId);
       try {
         await loadDraft(activeDraftId);
         await executeSearch();
-        await loadRecommendations();
       } finally {
         autoLoadingDraftRef.current.delete(activeDraftId);
       }
@@ -257,10 +293,16 @@ function TicketsPage({ embedded = false, openRequest = null }) {
 
   const applyRecommendation = (recommendItem) => {
     if (!recommendItem) return;
+    if (recommendItem.tripType === "transfer") {
+      setActiveTab("transfer");
+    } else {
+      setActiveTab("direct");
+    }
     executeSearch({
       preferredOptionId: recommendItem.optionId,
       onlySecondClassAvailable: false,
     });
+    setMetaNotice("已应用推荐，已将推荐车次置顶展示。");
   };
 
   const SuggestPanel = (
@@ -424,7 +466,7 @@ function TicketsPage({ embedded = false, openRequest = null }) {
             columns={columns}
             dataSource={dataSource}
             pagination={false}
-            scroll={{ x: 860 }}
+            scroll={{ x: 860, y: 420 }}
           />
         ) : (
           <div style={{ 

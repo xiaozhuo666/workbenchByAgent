@@ -1,11 +1,15 @@
 const { randomUUID } = require("crypto");
+const path = require("path");
 const repository = require("./ticket.repository");
+const mcpManager = require("../mcp/mcpServerManager");
 const {
   TICKET_ERROR_CODES,
   draftNotFound,
   draftExpired,
   invalidTicketParams,
 } = require("./ticket.errors");
+
+let register12306Promise = null;
 
 function ensureDraftPayload({ route, date }) {
   if (!route?.fromCity || !route?.toCity || !date) {
@@ -92,75 +96,143 @@ async function getDraftOrThrow({ userId, draftId }) {
   return buildDraftResponse(record);
 }
 
-function buildMockDirectOptions(draft) {
-  const basePrice = draft.preferences?.strategy === "cheapest" ? 420 : 560;
-  return [
-    {
-      optionId: `${draft.draftId}-d1`,
-      tripType: "direct",
-      trainNo: "G12",
-      departAt: `${draft.date} 08:00`,
-      arriveAt: `${draft.date} 12:38`,
-      durationMinutes: 278,
-      priceMin: basePrice,
-      seatAvailability: { "二等座": "有票", "一等座": "少量" },
-    },
-    {
-      optionId: `${draft.draftId}-d2`,
-      tripType: "direct",
-      trainNo: "G24",
-      departAt: `${draft.date} 09:30`,
-      arriveAt: `${draft.date} 14:20`,
-      durationMinutes: 290,
-      priceMin: basePrice - 60,
-      seatAvailability: { "二等座": "有票", 商务座: "无票" },
-    },
-    {
-      optionId: `${draft.draftId}-d3`,
-      tripType: "direct",
-      trainNo: "G46",
-      departAt: `${draft.date} 11:20`,
-      arriveAt: `${draft.date} 16:38`,
-      durationMinutes: 318,
-      priceMin: basePrice - 80,
-      seatAvailability: { "二等座": "少量", "一等座": "有票" },
-    },
-  ];
+async function ensure12306ServerRegistered() {
+  if (register12306Promise) return register12306Promise;
+  const projectRoot = path.resolve(process.cwd());
+  const actualRoot = projectRoot.endsWith("backend") ? path.dirname(projectRoot) : projectRoot;
+  register12306Promise = mcpManager.registerServer("12306-server", {
+    command: "node",
+    args: [path.join(actualRoot, "MCP-Tools", "12306-mcp", "build", "index.js")],
+    env: {},
+  });
+  return register12306Promise;
 }
 
-function buildMockTransferOptions(draft) {
-  return [
-    {
-      optionId: `${draft.draftId}-t1`,
-      tripType: "transfer",
-      trainNo: "G100 + G220",
-      departAt: `${draft.date} 07:10`,
-      arriveAt: `${draft.date} 13:20`,
-      durationMinutes: 370,
-      transferCount: 1,
-      transferWaitMinutes: 32,
-      priceMin: 430,
-      seatAvailability: { "二等座": "有票" },
-    },
-    {
-      optionId: `${draft.draftId}-t2`,
-      tripType: "transfer",
-      trainNo: "D88 + G300",
-      departAt: `${draft.date} 10:00`,
-      arriveAt: `${draft.date} 17:30`,
-      durationMinutes: 450,
-      transferCount: 1,
-      transferWaitMinutes: 20,
-      priceMin: 360,
-      seatAvailability: { "二等座": "有票" },
-    },
-  ];
+function safeJsonParse(input, fallback) {
+  try {
+    return JSON.parse(input);
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function extractMcpText(result) {
+  const content = result?.content || [];
+  const firstText = content.find((item) => item?.type === "text")?.text || "";
+  return String(firstText || "");
+}
+
+function toDurationMinutes(lishi = "") {
+  const [hh = "0", mm = "0"] = String(lishi).split(":");
+  return Number(hh) * 60 + Number(mm);
+}
+
+function toSeatStatus(num) {
+  if (num === "有" || num === "充足") return "有票";
+  if (num === "候补") return "候补";
+  if (num === "无" || num === "--" || num === "") return "无票";
+  if (/^\d+$/.test(String(num))) return Number(num) > 0 ? `剩余${num}张` : "无票";
+  return String(num || "未知");
+}
+
+function buildSeatAvailability(prices = []) {
+  const map = {};
+  prices.forEach((price) => {
+    if (!price?.seat_name) return;
+    map[price.seat_name] = toSeatStatus(price.num);
+  });
+  return map;
+}
+
+function minPriceFromPrices(prices = []) {
+  const list = prices
+    .map((item) => Number(item?.price))
+    .filter((val) => Number.isFinite(val) && val > 0);
+  if (!list.length) return null;
+  return Math.min(...list);
+}
+
+function buildTrainFilterFlags(trainTypes = []) {
+  const set = new Set();
+  (trainTypes || []).forEach((item) => {
+    const type = String(item || "").trim().toUpperCase();
+    if (["G", "D", "Z", "T", "K", "O", "F", "S"].includes(type)) {
+      set.add(type);
+    }
+    if (type === "C") set.add("G");
+  });
+  return Array.from(set).join("");
+}
+
+function mapSortToMcp(sortBy) {
+  if (sortBy === "shortest_duration") return { sortFlag: "duration", sortReverse: false };
+  if (sortBy === "earliest_departure") return { sortFlag: "startTime", sortReverse: false };
+  return { sortFlag: "", sortReverse: false };
+}
+
+async function resolveStationCodes(fromCity, toCity) {
+  await ensure12306ServerRegistered();
+  const stationResult = await mcpManager.callTool("get-station-code-of-citys", {
+    citys: `${fromCity}|${toCity}`,
+  });
+  const payload = safeJsonParse(extractMcpText(stationResult), {});
+  const from = payload?.[fromCity];
+  const to = payload?.[toCity];
+  if (!from?.station_code || !to?.station_code) {
+    throw invalidTicketParams("未能识别出发地或到达地的站点编码");
+  }
+  return { fromStation: from.station_code, toStation: to.station_code };
+}
+
+function mapDirectOption(ticket, draft, idx) {
+  const priceMin = minPriceFromPrices(ticket.prices);
+  return {
+    optionId: `${draft.draftId}-d-${ticket.train_no || idx}`,
+    tripType: "direct",
+    trainNo: ticket.start_train_code || ticket.train_no || "--",
+    departAt: `${ticket.start_date} ${ticket.start_time}`,
+    arriveAt: `${ticket.arrive_date} ${ticket.arrive_time}`,
+    durationMinutes: toDurationMinutes(ticket.lishi),
+    priceMin,
+    seatAvailability: buildSeatAvailability(ticket.prices),
+  };
+}
+
+function parseWaitMinutes(waitTime = "") {
+  const matched = String(waitTime).match(/(?:(\d+)小时)?(\d+)分钟/);
+  if (!matched) return 0;
+  return Number(matched[1] || 0) * 60 + Number(matched[2] || 0);
+}
+
+function mapTransferOption(interline, draft, idx) {
+  const allPrices = (interline.ticketList || []).flatMap((ticket) => ticket.prices || []);
+  const priceMin = minPriceFromPrices(allPrices);
+  return {
+    optionId: `${draft.draftId}-t-${interline.first_train_no || idx}`,
+    tripType: "transfer",
+    trainNo: `${interline.first_train_no || "--"} + ${interline.second_train_no || "--"}`,
+    departAt: `${interline.start_date} ${interline.start_time}`,
+    arriveAt: `${interline.arrive_date} ${interline.arrive_time}`,
+    durationMinutes: toDurationMinutes(interline.lishi),
+    transferCount: Math.max((interline.train_count || 2) - 1, 1),
+    transferWaitMinutes: parseWaitMinutes(interline.wait_time),
+    priceMin,
+    seatAvailability: buildSeatAvailability(allPrices),
+  };
 }
 
 function applyFilters(options, filters = {}) {
   let result = [...options];
   if (filters.onlySecondClassAvailable) {
     result = result.filter((item) => item.seatAvailability?.["二等座"] && item.seatAvailability["二等座"] !== "无票");
+  }
+  if (filters.preferredOptionId) {
+    const preferredId = String(filters.preferredOptionId);
+    result.sort((a, b) => {
+      const aPreferred = String(a.optionId) === preferredId ? 0 : 1;
+      const bPreferred = String(b.optionId) === preferredId ? 0 : 1;
+      return aPreferred - bPreferred;
+    });
   }
   return result;
 }
@@ -181,8 +253,46 @@ async function searchTickets({ userId, draftId, sortBy, filters }) {
   const startedAt = Date.now();
   try {
     const draft = await getDraftOrThrow({ userId, draftId });
-    const directOptions = applySort(applyFilters(buildMockDirectOptions(draft), filters), sortBy);
-    const transferOptions = applySort(applyFilters(buildMockTransferOptions(draft), filters), sortBy);
+    const { fromStation, toStation } = await resolveStationCodes(
+      draft.route.fromCity,
+      draft.route.toCity
+    );
+    await ensure12306ServerRegistered();
+    const { sortFlag, sortReverse } = mapSortToMcp(sortBy);
+    const trainFilterFlags = buildTrainFilterFlags(draft.preferences?.trainTypes || []);
+
+    const directRaw = await mcpManager.callTool("get-tickets", {
+      date: draft.date,
+      fromStation,
+      toStation,
+      trainFilterFlags,
+      sortFlag,
+      sortReverse,
+      limitedNum: 20,
+      format: "json",
+    });
+    const directPayload = safeJsonParse(extractMcpText(directRaw), []);
+    const directMapped = Array.isArray(directPayload)
+      ? directPayload.map((item, idx) => mapDirectOption(item, draft, idx))
+      : [];
+
+    const transferRaw = await mcpManager.callTool("get-interline-tickets", {
+      date: draft.date,
+      fromStation,
+      toStation,
+      trainFilterFlags,
+      sortFlag,
+      sortReverse,
+      limitedNum: 12,
+      format: "json",
+    });
+    const transferPayload = safeJsonParse(extractMcpText(transferRaw), []);
+    const transferMapped = Array.isArray(transferPayload)
+      ? transferPayload.map((item, idx) => mapTransferOption(item, draft, idx))
+      : [];
+
+    const directOptions = applySort(applyFilters(directMapped, filters), sortBy);
+    const transferOptions = applySort(applyFilters(transferMapped, filters), sortBy);
     const total = directOptions.length + transferOptions.length;
 
     await repository.logTicketQuery({
@@ -245,6 +355,7 @@ function mapRecommendation(option, type) {
   };
   return {
     optionId: option.optionId,
+    tripType: option.tripType,
     trainNo: option.trainNo,
     departAt: option.departAt,
     arriveAt: option.arriveAt,

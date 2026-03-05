@@ -97,11 +97,12 @@ const HomePage = ({ isGuest, initialTab = "home" }) => {
     if (isMobile) setMobileMenuOpen(false);
   };
 
-  const handleOpenTickets = ({ draftId, refine = false } = {}) => {
+  const handleOpenTickets = ({ draftId, refine = false, preloaded = null } = {}) => {
     setActiveTab("tickets");
     setTicketOpenRequest({
       draftId: draftId || "",
       refine: Boolean(refine),
+      preloaded,
       requestId: Date.now(),
     });
   };
