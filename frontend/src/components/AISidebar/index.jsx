@@ -350,43 +350,78 @@ const AISidebar = ({ onDraftSaved }) => {
                 }}
                 className="message-bubble"
               >
-                <div style={{ whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.6 }}>{msg.content}</div>
+                <div
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    fontSize: 14,
+                    lineHeight: 1.6,
+                    wordBreak: "break-word",
+                    overflowWrap: "anywhere",
+                  }}
+                >
+                  {msg.content}
+                </div>
                 
                 {index === 0 && msg.role === "assistant" && (
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #f0f0f0" }}>
                     <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>你可以试着这样说：</Text>
                     <Space direction="vertical" size={4} style={{ width: "100%" }}>
-                      <Button 
-                        type="link" 
-                        size="small" 
-                        style={{ padding: 0, height: "auto", textAlign: "left", fontSize: 13 }}
+                      <Button
+                        type="link"
+                        size="small"
+                        style={{
+                          padding: 0,
+                          height: "auto",
+                          textAlign: "left",
+                          fontSize: 13,
+                          display: "block",
+                          width: "100%",
+                          whiteSpace: "normal",
+                          lineHeight: 1.6,
+                          wordBreak: "break-word",
+                          overflowWrap: "anywhere",
+                        }}
                         onClick={() => processSend("帮我安排今天上午的会议，提醒我明天下午买牛奶")}
                       >
-                        “帮我安排今天上午的会议，提醒我明天下午买牛奶”
+                        “帮我安排今天上午的会议，并添加2个代办事项，分别是买牛奶和买零食”
                       </Button>
-                      <Button 
-                        type="link" 
-                        size="small" 
-                        style={{ padding: 0, height: "auto", textAlign: "left", fontSize: 13 }}
-                        onClick={() => processSend("添加3个代办事项，分别是买牛奶，买衣服，买零食")}
+                      <Button
+                        type="link"
+                        size="small"
+                        style={{
+                          padding: 0,
+                          height: "auto",
+                          textAlign: "left",
+                          fontSize: 13,
+                          display: "block",
+                          width: "100%",
+                          whiteSpace: "normal",
+                          lineHeight: 1.6,
+                          wordBreak: "break-word",
+                          overflowWrap: "anywhere",
+                        }}
+                        onClick={() => processSend("帮我查询明天北京到上海的高铁票")}
                       >
-                        “添加3个代办事项，分别是买牛奶，买衣服，买零食”
+                        “帮我查询明天北京到上海的高铁票”
                       </Button>
-                      <Button 
-                        type="link" 
-                        size="small" 
-                        style={{ padding: 0, height: "auto", textAlign: "left", fontSize: 13 }}
-                        onClick={() => processSend("确认第一个代办事项")}
+                      <Button
+                        type="link"
+                        size="small"
+                        style={{
+                          padding: 0,
+                          height: "auto",
+                          textAlign: "left",
+                          fontSize: 13,
+                          display: "block",
+                          width: "100%",
+                          whiteSpace: "normal",
+                          lineHeight: 1.6,
+                          wordBreak: "break-word",
+                          overflowWrap: "anywhere",
+                        }}
+                        onClick={() => processSend("用CSDN搜索最新的AI动态")}
                       >
-                        “确认第一个代办事项”
-                      </Button>
-                      <Button 
-                        type="link" 
-                        size="small" 
-                        style={{ padding: 0, height: "auto", textAlign: "left", fontSize: 13 }}
-                        onClick={() => processSend("我已经买了零食了")}
-                      >
-                        “我已经买了零食了”
+                        “用CSDN搜索最新的AI动态”
                       </Button>
                     </Space>
                   </div>
